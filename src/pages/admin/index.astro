@@ -2,36 +2,72 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 
 export const prerender = false;
+
+const userEmail = Astro.request.headers.get('Cf-Access-Authenticated-User-Email');
+const greeting = (() => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+})();
 ---
 
 <AdminLayout title="Dashboard">
-  <h1 class="text-2xl font-bold text-white">Dashboard</h1>
-  <p class="mt-2 text-grey-300">Welcome to the Smagile admin area.</p>
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-white font-heading">
+      {greeting}{userEmail ? `, ${userEmail.split('@')[0]}` : ''}
+    </h1>
+    <p class="mt-1 text-warm-300">Welcome to the smagile admin area.</p>
+  </div>
 
-  <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
     <a
       href="/admin/courses/"
-      class="p-6 bg-grey-800 rounded-xl border border-grey-700 hover:border-secondary transition-colors"
+      class="group p-6 bg-grey-800 rounded-xl border border-grey-700 hover:border-secondary transition-all hover:shadow-lg hover:shadow-secondary/5"
     >
-      <h2 class="text-lg font-semibold text-white">Course Offerings</h2>
-      <p class="mt-2 text-sm text-grey-300">Create and manage training course listings.</p>
-      <span class="mt-3 inline-block text-xs font-mono text-grey-300 bg-grey-700 px-2 py-1 rounded">
-        Coming soon
+      <div class="flex items-center gap-3 mb-3">
+        <div class="p-2 bg-secondary/10 rounded-lg">
+          <svg class="w-5 h-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-white">Course Offerings</h2>
+      </div>
+      <p class="text-sm text-warm-300">Create and manage training course listings for the public site.</p>
+      <span class="mt-4 inline-flex items-center gap-1 text-sm text-secondary group-hover:gap-2 transition-all">
+        Manage
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
       </span>
     </a>
 
-    <div class="p-6 bg-grey-800 rounded-xl border border-grey-700 opacity-60">
-      <h2 class="text-lg font-semibold text-white">Mission Control</h2>
-      <p class="mt-2 text-sm text-grey-300">Personal command centre for tracking goals and projects.</p>
-      <span class="mt-3 inline-block text-xs font-mono text-grey-300 bg-grey-700 px-2 py-1 rounded">
+    <div class="p-6 bg-grey-800/50 rounded-xl border border-grey-700/50">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="p-2 bg-grey-700/50 rounded-lg">
+          <svg class="w-5 h-5 text-grey-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-grey-500">Mission Control</h2>
+      </div>
+      <p class="text-sm text-grey-500">Personal command centre for tracking goals and projects.</p>
+      <span class="mt-4 inline-block text-xs font-mono text-grey-500 bg-grey-800 px-2 py-1 rounded">
         Separate project
       </span>
     </div>
 
-    <div class="p-6 bg-grey-800 rounded-xl border border-grey-700 opacity-60">
-      <h2 class="text-lg font-semibold text-white">API Services</h2>
-      <p class="mt-2 text-sm text-grey-300">Job trawler, CV generator, and other tools.</p>
-      <span class="mt-3 inline-block text-xs font-mono text-grey-300 bg-grey-700 px-2 py-1 rounded">
+    <div class="p-6 bg-grey-800/50 rounded-xl border border-grey-700/50">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="p-2 bg-grey-700/50 rounded-lg">
+          <svg class="w-5 h-5 text-grey-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-grey-500">API Services</h2>
+      </div>
+      <p class="text-sm text-grey-500">Job trawler, CV generator, and other tools.</p>
+      <span class="mt-4 inline-block text-xs font-mono text-grey-500 bg-grey-800 px-2 py-1 rounded">
         Separate project
       </span>
     </div>

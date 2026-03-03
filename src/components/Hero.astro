@@ -9,21 +9,34 @@ interface Props {
 const { headline, subtext, ctaText, ctaHref } = Astro.props;
 ---
 
-<section class="py-20 sm:py-28 px-4">
-  <div class="max-w-3xl mx-auto text-center">
-    <h1 class="text-4xl sm:text-5xl font-bold text-grey-900 dark:text-white leading-tight">
+<section class="relative py-24 sm:py-32 px-4 overflow-hidden bg-gradient-to-b from-secondary-50 via-white to-white dark:from-grey-900 dark:via-grey-900 dark:to-grey-900">
+  <!-- Decorative secondary glow (top-left) -->
+  <div class="absolute -top-24 -left-24 w-96 h-96 bg-secondary/10 dark:bg-primary/15 rounded-full blur-3xl"></div>
+  <!-- Decorative gold glow (bottom-right) -->
+  <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-accent/8 dark:bg-accent/10 rounded-full blur-3xl"></div>
+  <!-- Decorative gold line -->
+  <div class="absolute top-0 left-1/2 -translate-x-1/2 w-24 divider-gold"></div>
+
+  <div class="relative max-w-3xl mx-auto text-center">
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-dark dark:text-white leading-tight tracking-tight">
       {headline}
     </h1>
-    <p class="mt-6 text-lg sm:text-xl text-grey-700 dark:text-grey-300 leading-relaxed">
+    <p class="mt-6 text-lg sm:text-xl text-grey-700 dark:text-warm-200 leading-relaxed max-w-2xl mx-auto">
       {subtext}
     </p>
     {ctaText && ctaHref && (
-      <div class="mt-10">
+      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
         <a
           href={ctaHref}
-          class="inline-block px-8 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors"
+          class="inline-block px-8 py-3.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-all shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5"
         >
           {ctaText}
+        </a>
+        <a
+          href="/how-we-help/"
+          class="inline-block px-8 py-3.5 border-2 border-accent/40 text-grey-700 dark:text-warm-200 hover:border-accent hover:text-accent dark:hover:text-accent-light font-medium rounded-lg transition-all"
+        >
+          See how we help
         </a>
       </div>
     )}

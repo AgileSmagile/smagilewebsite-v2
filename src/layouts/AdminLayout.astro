@@ -8,6 +8,18 @@ interface Props {
 }
 
 const { title } = Astro.props;
+const currentPath = Astro.url.pathname;
+const userEmail = Astro.request.headers.get('Cf-Access-Authenticated-User-Email');
+
+const adminNav = [
+  { label: 'Dashboard', href: '/admin/' },
+  { label: 'Courses', href: '/admin/courses/' },
+];
+
+function isActive(href: string): boolean {
+  if (href === '/admin/') return currentPath === '/admin/' || currentPath === '/admin';
+  return currentPath.startsWith(href);
+}
 ---
 
 <BaseLayout title={title} darkDefault={true}>
@@ -15,13 +27,25 @@ const { title } = Astro.props;
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="Admin navigation">
       <div class="flex items-center justify-between h-14">
         <div class="flex items-center gap-4">
-          <a href="/" class="text-secondary font-bold text-lg">Smagile</a>
-          <span class="text-xs font-mono text-grey-300 bg-grey-800 px-2 py-1 rounded">Admin</span>
+          <a href="/" class="text-secondary font-bold text-lg font-heading">smagile</a>
+          <span class="text-xs font-mono text-accent-light bg-grey-800 px-2 py-1 rounded border border-grey-700">Admin</span>
         </div>
         <div class="flex items-center gap-4">
-          <a href="/admin/" class="text-sm text-grey-300 hover:text-secondary transition-colors">Dashboard</a>
-          <a href="/admin/courses/" class="text-sm text-grey-300 hover:text-secondary transition-colors">Courses</a>
-          <a href="/" class="text-sm text-grey-300 hover:text-secondary transition-colors">View Site</a>
+          {adminNav.map((item) => (
+            <a
+              href={item.href}
+              class:list={[
+                'text-sm transition-colors',
+                isActive(item.href)
+                  ? 'text-secondary font-medium'
+                  : 'text-warm-300 hover:text-secondary',
+              ]}
+            >
+              {item.label}
+            </a>
+          ))}
+          <span class="w-px h-4 bg-grey-700"></span>
+          <a href="/" class="text-sm text-warm-300 hover:text-secondary transition-colors">View Site</a>
           <ThemeToggle />
         </div>
       </div>
@@ -30,4 +54,14 @@ const { title } = Astro.props;
   <main class="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <slot />
   </main>
+  <footer class="mt-auto border-t border-grey-800 py-4">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between text-xs text-grey-500">
+      {userEmail ? (
+        <span>Signed in as {userEmail}</span>
+      ) : (
+        <span>smagile admin</span>
+      )}
+      <span>&copy; {new Date().getFullYear()} smagile</span>
+    </div>
+  </footer>
 </BaseLayout>

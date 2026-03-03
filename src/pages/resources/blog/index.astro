@@ -9,23 +9,23 @@ const posts = (await getCollection('blog'))
 
 <PublicLayout
   title="Blog"
-  description="Articles on agile practices, facilitation, kanban, and ways of working from Smagile."
+  description="Articles on agile practices, facilitation, kanban, and ways of working from smagile."
 >
   <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
     <h1 class="text-3xl sm:text-4xl font-bold text-grey-900 dark:text-white">Blog</h1>
-    <p class="mt-4 text-lg text-grey-700 dark:text-grey-300">
+    <p class="mt-4 text-lg text-grey-700 dark:text-warm-200">
       Practical articles on agile practices, facilitation, and ways of working.
     </p>
 
     <div class="mt-12 space-y-8">
       {posts.length === 0 && (
-        <p class="text-grey-700 dark:text-grey-300 italic">No posts yet. Check back soon.</p>
+        <p class="text-grey-700 dark:text-warm-200 italic">No posts yet. Check back soon.</p>
       )}
       {posts.map((post) => (
-        <article class="p-6 bg-grey-50 dark:bg-grey-800 rounded-xl border border-grey-200 dark:border-grey-700">
+        <article class="p-6 bg-secondary-50 dark:bg-grey-800 rounded-xl border border-secondary-200 dark:border-grey-700">
           <time
             datetime={post.data.pubDate.toISOString()}
-            class="text-sm text-grey-700 dark:text-grey-300"
+            class="text-sm text-grey-700 dark:text-warm-200"
           >
             {post.data.pubDate.toLocaleDateString('en-GB', {
               year: 'numeric',
@@ -41,7 +41,7 @@ const posts = (await getCollection('blog'))
               {post.data.title}
             </a>
           </h2>
-          <p class="mt-2 text-grey-700 dark:text-grey-300">{post.data.description}</p>
+          <p class="mt-2 text-grey-700 dark:text-warm-200">{post.data.description}</p>
           <a
             href={`/resources/blog/${post.id}/`}
             class="mt-4 inline-flex items-center gap-1 text-primary dark:text-secondary font-medium hover:underline"

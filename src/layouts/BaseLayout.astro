@@ -8,7 +8,7 @@ interface Props {
 
 const {
   title,
-  description = 'Smagile is a remote-first agile consultancy helping teams deliver better outcomes through practical support, training, and coaching.',
+  description = 'smagile is a remote-first agile consultancy helping teams deliver better outcomes through practical support, training, and coaching.',
   ogImage = '/og-default.png',
   darkDefault = false,
 } = Astro.props;
@@ -23,23 +23,23 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="sitemap" href="/sitemap-index.xml" />
-    <link rel="alternate" type="application/rss+xml" title="Smagile Blog" href="/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title="smagile Blog" href="/rss.xml" />
     <link rel="canonical" href={canonicalUrl} />
 
-    <title>{title} | Smagile</title>
+    <title>{title} | smagile</title>
     <meta name="description" content={description} />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:title" content={`${title} | Smagile`} />
+    <meta property="og:title" content={`${title} | smagile`} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={new URL(ogImage, Astro.site)} />
     <meta property="og:locale" content="en_GB" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={`${title} | Smagile`} />
+    <meta name="twitter:title" content={`${title} | smagile`} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={new URL(ogImage, Astro.site)} />
 

@@ -8,7 +8,7 @@ export async function GET(context: APIContext) {
     .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
   return rss({
-    title: 'Smagile Blog',
+    title: 'smagile Blog',
     description:
       'Practical articles on agile practices, facilitation, kanban, and ways of working.',
     site: context.site!,
