@@ -1,0 +1,98 @@
+---
+---
+
+<div
+  id="cookie-consent"
+  class="hidden fixed bottom-0 left-0 right-0 z-50 p-4 bg-white dark:bg-grey-800 border-t border-grey-200 dark:border-grey-700 shadow-lg"
+  role="dialog"
+  aria-label="Cookie consent"
+>
+  <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4">
+    <div class="flex-1">
+      <p class="text-sm text-grey-800 dark:text-grey-100">
+        We use essential cookies to keep the site working. With your permission, we also use
+        Google Analytics to understand how visitors use the site so we can improve it.
+      </p>
+      <p class="mt-1 text-xs text-grey-700 dark:text-grey-300">
+        Read our <a href="/privacy/" class="underline hover:text-primary dark:hover:text-secondary">privacy policy</a> for details.
+        You can change your preference at any time via the link in the footer.
+      </p>
+    </div>
+    <div class="flex gap-2 shrink-0">
+      <button
+        id="cookie-accept-essential"
+        type="button"
+        class="px-4 py-2 text-sm font-medium bg-grey-200 dark:bg-grey-700 text-grey-800 dark:text-grey-100 rounded-lg hover:bg-grey-300 dark:hover:bg-grey-600 transition-colors"
+      >
+        Essential only
+      </button>
+      <button
+        id="cookie-accept-all"
+        type="button"
+        class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+      >
+        Accept all
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const banner = document.getElementById('cookie-consent');
+  const essentialBtn = document.getElementById('cookie-accept-essential');
+  const allBtn = document.getElementById('cookie-accept-all');
+
+  function getConsent(): { level: string; timestamp: string } | null {
+    const raw = localStorage.getItem('cookie-consent');
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function setConsent(level: string) {
+    const record = {
+      level,
+      timestamp: new Date().toISOString(),
+    };
+    localStorage.setItem('cookie-consent', JSON.stringify(record));
+    banner?.classList.add('hidden');
+
+    if (level === 'all') {
+      loadGoogleAnalytics();
+    }
+  }
+
+  function loadGoogleAnalytics() {
+    const gaId = document.querySelector<HTMLElement>('[data-ga-id]')?.dataset.gaId;
+    if (!gaId || document.getElementById('ga-script')) return;
+
+    const script = document.createElement('script');
+    script.id = 'ga-script';
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      (window as any).dataLayer = (window as any).dataLayer || [];
+      function gtag(...args: any[]) {
+        (window as any).dataLayer.push(args);
+      }
+      gtag('js', new Date());
+      gtag('config', gaId, { anonymize_ip: true });
+    };
+  }
+
+  // Show banner if no consent recorded
+  const consent = getConsent();
+  if (!consent && banner) {
+    banner.classList.remove('hidden');
+  } else if (consent?.level === 'all') {
+    loadGoogleAnalytics();
+  }
+
+  essentialBtn?.addEventListener('click', () => setConsent('essential'));
+  allBtn?.addEventListener('click', () => setConsent('all'));
+</script>

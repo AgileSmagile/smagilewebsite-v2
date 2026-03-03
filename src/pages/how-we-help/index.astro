@@ -1,0 +1,32 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import ProblemCard from '../../components/ProblemCard.astro';
+---
+
+<PublicLayout
+  title="How We Help"
+  description="Smagile helps teams through consultancy, facilitation, and practical agile training. We meet you where you are."
+>
+  <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <h1 class="text-3xl sm:text-4xl font-bold text-grey-900 dark:text-white">How we help</h1>
+    <p class="mt-4 text-lg text-grey-700 dark:text-grey-300">
+      Every team and organisation is different. We do not offer a one-size-fits-all package.
+      Instead, we listen to your challenges and tailor our support to your context.
+    </p>
+
+    <div class="mt-12 grid gap-8">
+      <ProblemCard
+        problem="We need someone to work alongside our teams and help them improve"
+        solution="Our consultancy and facilitation service embeds alongside your teams. We observe, coach, and facilitate to help them find their own path to better outcomes."
+        href="/how-we-help/consultancy/"
+        linkText="Consultancy and facilitation"
+      />
+      <ProblemCard
+        problem="Our people need practical training they can apply straight away"
+        solution="We are licensed ProKanban.org trainers and deliver bespoke agile fundamentals training built on over a decade of real-world experience."
+        href="/how-we-help/training/"
+        linkText="Explore training options"
+      />
+    </div>
+  </section>
+</PublicLayout>

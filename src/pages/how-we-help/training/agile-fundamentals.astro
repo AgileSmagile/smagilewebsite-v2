@@ -1,0 +1,68 @@
+---
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import JsonLd from '../../../components/JsonLd.astro';
+
+const courseSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Course',
+  name: 'Agile Fundamentals',
+  description:
+    'Bespoke agile training for teams and leaders at any stage of their agile journey. Interactive workshops built on over a decade of real-world experience.',
+  provider: {
+    '@type': 'Organization',
+    name: 'Smagile',
+    url: 'https://smagile.co',
+  },
+  coursePrerequisites: 'None',
+  availableLanguage: 'en-GB',
+  deliveryMode: 'online',
+};
+---
+
+<PublicLayout
+  title="Agile Fundamentals"
+  description="Bespoke agile training for teams and leaders. Interactive workshops built on over a decade of real-world experience."
+>
+  <JsonLd data={courseSchema} />
+  <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <h1 class="text-3xl sm:text-4xl font-bold text-grey-900 dark:text-white">
+      Agile Fundamentals
+    </h1>
+
+    <div class="mt-8 prose prose-lg dark:prose-invert max-w-none">
+      <p class="text-xl text-grey-700 dark:text-grey-300">
+        Your organisation is adopting agile, but your people need more than a two-day
+        certification course. They need skills they can apply to their real challenges, today.
+      </p>
+
+      <h2>What we offer</h2>
+      <p>
+        Our Agile Fundamentals training is developed over a decade of serving teams and
+        organisations. These interactive courses are the product of supporting product teams
+        of varying degrees of agile experience, from complete novice to seasoned practitioner.
+      </p>
+
+      <h2>Topics covered</h2>
+      <ul>
+        <li>Agile principles and values in practice</li>
+        <li>Scrum, Kanban, and choosing what fits your context</li>
+        <li>Effective collaboration in distributed teams</li>
+        <li>Facilitation techniques for better meetings and workshops</li>
+        <li>Building a culture of continuous improvement</li>
+      </ul>
+
+      <h2>Tailored to you</h2>
+      <p>
+        Every course is bespoke. We work with you to understand your team's experience level,
+        challenges, and goals, then design a workshop that addresses your specific needs.
+        Courses can be delivered for teams or for leadership groups.
+      </p>
+
+      <h2>Get started</h2>
+      <p>
+        <a href="/contact/">Get in touch</a> to discuss your training needs.
+        We will design something that works for your people.
+      </p>
+    </div>
+  </section>
+</PublicLayout>

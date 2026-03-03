@@ -1,0 +1,75 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  darkDefault?: boolean;
+}
+
+const {
+  title,
+  description = 'Smagile is a remote-first agile consultancy helping teams deliver better outcomes through practical support, training, and coaching.',
+  ogImage = '/og-default.png',
+  darkDefault = false,
+} = Astro.props;
+
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Smagile Blog" href="/rss.xml" />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <title>{title} | Smagile</title>
+    <meta name="description" content={description} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:title" content={`${title} | Smagile`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(ogImage, Astro.site)} />
+    <meta property="og:locale" content="en_GB" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={`${title} | Smagile`} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL(ogImage, Astro.site)} />
+
+    <!-- Theme: prevent flash of wrong theme -->
+    <script is:inline define:vars={{ darkDefault }}>
+      (function () {
+        const stored = localStorage.getItem('theme');
+        if (stored === 'dark' || (!stored && darkDefault)) {
+          document.documentElement.classList.add('dark');
+        } else if (stored === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else if (!stored && !darkDefault && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+
+    <slot name="head" />
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <slot />
+
+    <!-- Cloudflare Web Analytics (cookie-free, no consent required) -->
+    {import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN && (
+      <script
+        is:inline
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon={`{"token": "${import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN}"}`}
+      />
+    )}
+  </body>
+</html>

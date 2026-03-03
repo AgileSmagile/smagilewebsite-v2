@@ -1,0 +1,33 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<BaseLayout title={title} darkDefault={true}>
+  <header class="sticky top-0 z-50 bg-grey-900/90 backdrop-blur-sm border-b border-grey-700">
+    <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="Admin navigation">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center gap-4">
+          <a href="/" class="text-secondary font-bold text-lg">Smagile</a>
+          <span class="text-xs font-mono text-grey-300 bg-grey-800 px-2 py-1 rounded">Admin</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <a href="/admin/" class="text-sm text-grey-300 hover:text-secondary transition-colors">Dashboard</a>
+          <a href="/admin/courses/" class="text-sm text-grey-300 hover:text-secondary transition-colors">Courses</a>
+          <a href="/" class="text-sm text-grey-300 hover:text-secondary transition-colors">View Site</a>
+          <ThemeToggle />
+        </div>
+      </div>
+    </nav>
+  </header>
+  <main class="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <slot />
+  </main>
+</BaseLayout>

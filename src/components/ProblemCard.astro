@@ -1,0 +1,28 @@
+---
+interface Props {
+  problem: string;
+  solution: string;
+  href: string;
+  linkText?: string;
+}
+
+const { problem, solution, href, linkText = 'Find out how' } = Astro.props;
+---
+
+<div class="p-6 sm:p-8 bg-grey-50 dark:bg-grey-800 rounded-xl border border-grey-200 dark:border-grey-700 hover:border-primary dark:hover:border-secondary transition-colors">
+  <p class="text-lg sm:text-xl font-semibold text-grey-900 dark:text-white leading-snug">
+    &ldquo;{problem}&rdquo;
+  </p>
+  <p class="mt-4 text-grey-700 dark:text-grey-300">
+    {solution}
+  </p>
+  <a
+    href={href}
+    class="mt-4 inline-flex items-center gap-1 text-primary dark:text-secondary font-medium hover:underline"
+  >
+    {linkText}
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  </a>
+</div>

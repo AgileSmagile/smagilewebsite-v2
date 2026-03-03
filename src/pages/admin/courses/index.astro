@@ -1,0 +1,22 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+
+export const prerender = false;
+---
+
+<AdminLayout title="Course Management">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Course Offerings</h1>
+      <p class="mt-2 text-grey-300">Create and manage public training course listings.</p>
+    </div>
+  </div>
+
+  <div class="mt-12 text-center py-16 border-2 border-dashed border-grey-700 rounded-xl">
+    <p class="text-grey-300">Course management tools are under development.</p>
+    <p class="mt-2 text-sm text-grey-300">
+      This area will allow you to create, edit, and publish training course offerings
+      to the public website.
+    </p>
+  </div>
+</AdminLayout>

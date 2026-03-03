@@ -1,0 +1,37 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+---
+
+<PublicLayout
+  title="Resources"
+  description="Agile resources, blog posts, and recommended reading from Smagile."
+>
+  <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <h1 class="text-3xl sm:text-4xl font-bold text-grey-900 dark:text-white">Resources</h1>
+    <p class="mt-4 text-lg text-grey-700 dark:text-grey-300">
+      Tools, articles, and recommendations to support your agile journey.
+    </p>
+
+    <div class="mt-12 grid gap-8">
+      <a
+        href="/resources/blog/"
+        class="block p-8 bg-grey-50 dark:bg-grey-800 rounded-xl border border-grey-200 dark:border-grey-700 hover:border-primary dark:hover:border-secondary transition-colors"
+      >
+        <h2 class="text-xl font-semibold text-grey-900 dark:text-white">Blog</h2>
+        <p class="mt-2 text-grey-700 dark:text-grey-300">
+          Practical articles on agile practices, facilitation techniques, and ways of working.
+        </p>
+      </a>
+
+      <a
+        href="/resources/reading/"
+        class="block p-8 bg-grey-50 dark:bg-grey-800 rounded-xl border border-grey-200 dark:border-grey-700 hover:border-primary dark:hover:border-secondary transition-colors"
+      >
+        <h2 class="text-xl font-semibold text-grey-900 dark:text-white">Recommended Reading</h2>
+        <p class="mt-2 text-grey-700 dark:text-grey-300">
+          Our favourite books, podcasts, and other learning resources for agile practitioners.
+        </p>
+      </a>
+    </div>
+  </section>
+</PublicLayout>

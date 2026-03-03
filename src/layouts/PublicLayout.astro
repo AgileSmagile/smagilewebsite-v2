@@ -1,0 +1,28 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import CookieConsent from '../components/CookieConsent.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+}
+
+const { title, description, ogImage } = Astro.props;
+---
+
+<BaseLayout title={title} description={description} ogImage={ogImage}>
+  <slot name="head" slot="head" />
+  <Header />
+  <main class="flex-1">
+    <slot />
+  </main>
+  <Footer />
+  {import.meta.env.PUBLIC_GA_MEASUREMENT_ID && (
+    <div data-ga-id={import.meta.env.PUBLIC_GA_MEASUREMENT_ID} hidden />
+  )}
+  <CookieConsent />
+</BaseLayout>

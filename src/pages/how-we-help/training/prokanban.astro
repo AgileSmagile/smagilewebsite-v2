@@ -1,0 +1,76 @@
+---
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import JsonLd from '../../../components/JsonLd.astro';
+
+const courseSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Course',
+  name: 'Applying Professional Kanban (APK)',
+  description:
+    'Hands-on course licensed by ProKanban.org. Learn to apply kanban principles to improve flow, reduce bottlenecks, and deliver more predictably.',
+  provider: {
+    '@type': 'Organization',
+    name: 'Smagile',
+    url: 'https://smagile.co',
+  },
+  educationalCredentialAwarded: 'ProKanban PK1/PKI certification eligibility',
+  coursePrerequisites: 'None',
+  availableLanguage: 'en-GB',
+  deliveryMode: 'online',
+};
+---
+
+<PublicLayout
+  title="ProKanban Training"
+  description="Applying Professional Kanban (APK) training licensed by ProKanban.org. Learn practical kanban skills to improve flow and delivery."
+>
+  <JsonLd data={courseSchema} />
+  <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <h1 class="text-3xl sm:text-4xl font-bold text-grey-900 dark:text-white">
+      Applying Professional Kanban
+    </h1>
+
+    <div class="mt-8 prose prose-lg dark:prose-invert max-w-none">
+      <p class="text-xl text-grey-700 dark:text-grey-300">
+        Your teams want to deliver more predictably, but they are drowning in work-in-progress
+        and struggling to see the bottlenecks. Sound familiar?
+      </p>
+
+      <h2>What is APK?</h2>
+      <p>
+        Applying Professional Kanban is a hands-on course licensed by
+        <a href="https://prokanban.org" target="_blank" rel="noopener noreferrer">ProKanban.org</a>.
+        It teaches participants how to apply kanban principles to improve the flow of work
+        through their system.
+      </p>
+
+      <h2>What you will learn</h2>
+      <ul>
+        <li>The core principles and practices of Professional Kanban</li>
+        <li>How to visualise work and identify bottlenecks</li>
+        <li>Techniques for managing and limiting work-in-progress</li>
+        <li>How to use flow metrics to make better decisions</li>
+        <li>Practical strategies for continuous improvement</li>
+      </ul>
+
+      <h2>Extended edition</h2>
+      <p>
+        Our APK Extended Edition goes beyond the standard course, including additional coaching
+        and mentoring to help participants apply what they have learned in their own context.
+        This prepares you for the PK1/PKI and PK2/PKII assessments.
+      </p>
+
+      <h2>Who is it for?</h2>
+      <p>
+        Anyone involved in knowledge work who wants to improve how their team delivers.
+        No prior kanban experience is required.
+      </p>
+
+      <h2>Interested?</h2>
+      <p>
+        <a href="/contact/">Get in touch</a> to discuss upcoming dates or arrange
+        a private booking for your organisation.
+      </p>
+    </div>
+  </section>
+</PublicLayout>

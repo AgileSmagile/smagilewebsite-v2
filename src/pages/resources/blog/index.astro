@@ -1,0 +1,58 @@
+---
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog'))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<PublicLayout
+  title="Blog"
+  description="Articles on agile practices, facilitation, kanban, and ways of working from Smagile."
+>
+  <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <h1 class="text-3xl sm:text-4xl font-bold text-grey-900 dark:text-white">Blog</h1>
+    <p class="mt-4 text-lg text-grey-700 dark:text-grey-300">
+      Practical articles on agile practices, facilitation, and ways of working.
+    </p>
+
+    <div class="mt-12 space-y-8">
+      {posts.length === 0 && (
+        <p class="text-grey-700 dark:text-grey-300 italic">No posts yet. Check back soon.</p>
+      )}
+      {posts.map((post) => (
+        <article class="p-6 bg-grey-50 dark:bg-grey-800 rounded-xl border border-grey-200 dark:border-grey-700">
+          <time
+            datetime={post.data.pubDate.toISOString()}
+            class="text-sm text-grey-700 dark:text-grey-300"
+          >
+            {post.data.pubDate.toLocaleDateString('en-GB', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </time>
+          <h2 class="mt-2 text-xl font-semibold text-grey-900 dark:text-white">
+            <a
+              href={`/resources/blog/${post.id}/`}
+              class="hover:text-primary dark:hover:text-secondary transition-colors"
+            >
+              {post.data.title}
+            </a>
+          </h2>
+          <p class="mt-2 text-grey-700 dark:text-grey-300">{post.data.description}</p>
+          <a
+            href={`/resources/blog/${post.id}/`}
+            class="mt-4 inline-flex items-center gap-1 text-primary dark:text-secondary font-medium hover:underline"
+          >
+            Read more
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </article>
+      ))}
+    </div>
+  </section>
+</PublicLayout>

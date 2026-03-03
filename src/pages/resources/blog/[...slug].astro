@@ -1,0 +1,54 @@
+---
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<PublicLayout title={post.data.title} description={post.data.description}>
+  <article class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <header>
+      <a
+        href="/resources/blog/"
+        class="text-sm text-primary dark:text-secondary hover:underline"
+      >
+        &larr; Back to blog
+      </a>
+      <h1 class="mt-4 text-3xl sm:text-4xl font-bold text-grey-900 dark:text-white">
+        {post.data.title}
+      </h1>
+      <div class="mt-4 flex items-center gap-4 text-sm text-grey-700 dark:text-grey-300">
+        <time datetime={post.data.pubDate.toISOString()}>
+          {post.data.pubDate.toLocaleDateString('en-GB', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </time>
+        <span>by {post.data.author}</span>
+      </div>
+      {post.data.tags.length > 0 && (
+        <div class="mt-4 flex gap-2 flex-wrap">
+          {post.data.tags.map((tag: string) => (
+            <span class="text-xs px-2 py-1 bg-secondary/20 text-primary dark:text-secondary rounded-full">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+    </header>
+
+    <div class="mt-10 prose prose-lg dark:prose-invert max-w-none">
+      <Content />
+    </div>
+  </article>
+</PublicLayout>
