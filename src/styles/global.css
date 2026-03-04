@@ -14,9 +14,9 @@
   --color-secondary-dark: #5aa8aa;
 
   /* Light secondary tints (for light mode surfaces) */
-  --color-secondary-50: #F2F9F9;
-  --color-secondary-100: #E0F0F1;
-  --color-secondary-200: #C4E3E4;
+  --color-secondary-50: #E0F0F1;
+  --color-secondary-100: #C4E3E4;
+  --color-secondary-200: #A8D4D6;
 
   /* Accent: warm gold/champagne */
   --color-accent: #B8953E;
@@ -53,7 +53,7 @@ html {
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--color-grey-800);
-  background-color: var(--color-secondary-50);
+  background-color: var(--color-white);
 }
 
 .dark body {

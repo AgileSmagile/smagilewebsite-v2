@@ -49,10 +49,8 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
         const stored = localStorage.getItem('theme');
         if (stored === 'dark' || (!stored && darkDefault)) {
           document.documentElement.classList.add('dark');
-        } else if (stored === 'light') {
+        } else {
           document.documentElement.classList.remove('dark');
-        } else if (!stored && !darkDefault && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          document.documentElement.classList.add('dark');
         }
       })();
     </script>
