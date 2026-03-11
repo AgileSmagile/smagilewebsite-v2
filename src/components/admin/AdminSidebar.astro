@@ -1,0 +1,104 @@
+---
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+const navItems = [
+  { label: 'Dashboard', href: '/admin/', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+  { label: 'Agents', href: '/admin/agents/', icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z' },
+  { label: 'Leads', href: '/admin/leads/', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+  { label: 'Content', href: '/admin/content/', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+  { label: 'Finance', href: '/admin/finance/', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { label: 'Projects', href: '/admin/projects/', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
+  { label: 'Courses', href: '/admin/courses/', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
+];
+
+function isActive(href: string): boolean {
+  if (href === '/admin/') return currentPath === '/admin/' || currentPath === '/admin';
+  return currentPath.startsWith(href);
+}
+---
+
+<aside id="admin-sidebar" class="hidden md:flex flex-col w-14 hover:w-52 transition-all duration-200 bg-grey-900 border-r border-grey-700 overflow-hidden group/sidebar" data-collapsed="true">
+  <nav class="flex-1 py-4" aria-label="Admin sidebar">
+    <ul class="space-y-1 px-2">
+      {navItems.map((item) => (
+        <li>
+          <a
+            href={item.href}
+            class:list={[
+              'flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap',
+              isActive(item.href)
+                ? 'bg-primary/20 text-secondary'
+                : 'text-warm-300 hover:bg-grey-800 hover:text-secondary',
+            ]}
+            title={item.label}
+          >
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+            </svg>
+            <span class="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200">{item.label}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</aside>
+
+<!-- Mobile nav overlay -->
+<div id="mobile-sidebar-overlay" class="fixed inset-0 z-40 bg-black/50 hidden md:hidden"></div>
+<aside id="mobile-sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-grey-900 border-r border-grey-700 transform -translate-x-full transition-transform duration-200 md:hidden">
+  <div class="flex items-center justify-between px-4 h-14 border-b border-grey-700">
+    <span class="text-secondary font-bold font-heading">smagile</span>
+    <button id="close-mobile-sidebar" class="p-1 text-warm-300 hover:text-white" aria-label="Close menu">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+  <nav class="py-4 px-3">
+    <ul class="space-y-1">
+      {navItems.map((item) => (
+        <li>
+          <a
+            href={item.href}
+            class:list={[
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+              isActive(item.href)
+                ? 'bg-primary/20 text-secondary'
+                : 'text-warm-300 hover:bg-grey-800 hover:text-secondary',
+            ]}
+          >
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+            </svg>
+            <span>{item.label}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</aside>
+
+<script>
+  const overlay = document.getElementById('mobile-sidebar-overlay');
+  const sidebar = document.getElementById('mobile-sidebar');
+  const closeBtn = document.getElementById('close-mobile-sidebar');
+  const openBtn = document.getElementById('open-mobile-sidebar');
+
+  function openMenu() {
+    sidebar?.classList.remove('-translate-x-full');
+    overlay?.classList.remove('hidden');
+  }
+
+  function closeMenu() {
+    sidebar?.classList.add('-translate-x-full');
+    overlay?.classList.add('hidden');
+  }
+
+  openBtn?.addEventListener('click', openMenu);
+  closeBtn?.addEventListener('click', closeMenu);
+  overlay?.addEventListener('click', closeMenu);
+</script>

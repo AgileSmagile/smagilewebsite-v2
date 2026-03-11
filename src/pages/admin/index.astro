@@ -1,5 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import StatCard from '../../components/admin/StatCard.astro';
+import StatusBadge from '../../components/admin/StatusBadge.astro';
 
 export const prerender = false;
 
@@ -10,66 +12,65 @@ const greeting = (() => {
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 })();
+
+const sections = [
+  { label: 'Agents', href: '/admin/agents/', description: 'Monitor autonomous agent status and health', icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z' },
+  { label: 'Leads', href: '/admin/leads/', description: 'Track prospects and outreach pipeline', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+  { label: 'Content', href: '/admin/content/', description: 'Manage content pipeline across channels', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+  { label: 'Finance', href: '/admin/finance/', description: 'Accounting overview and bank data', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { label: 'Projects', href: '/admin/projects/', description: 'Status of active builds and deployments', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
+  { label: 'Courses', href: '/admin/courses/', description: 'Manage training course listings', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
+];
 ---
 
-<AdminLayout title="Dashboard">
-  <div class="mb-8">
+<AdminLayout title="Mission Control">
+  <div class="mb-6">
     <h1 class="text-2xl font-bold text-white font-heading">
       {greeting}{userEmail ? `, ${userEmail.split('@')[0]}` : ''}
     </h1>
-    <p class="mt-1 text-warm-300">Welcome to the smagile admin area.</p>
+    <p class="mt-1 text-sm text-warm-300">Mission Control</p>
   </div>
 
-  <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-    <a
-      href="/admin/courses/"
-      class="group p-6 bg-grey-800 rounded-xl border border-grey-700 hover:border-secondary transition-all hover:shadow-lg hover:shadow-secondary/5"
-    >
-      <div class="flex items-center gap-3 mb-3">
-        <div class="p-2 bg-secondary/10 rounded-lg">
-          <svg class="w-5 h-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        </div>
-        <h2 class="text-lg font-semibold text-white">Course Offerings</h2>
-      </div>
-      <p class="text-sm text-warm-300">Create and manage training course listings for the public site.</p>
-      <span class="mt-4 inline-flex items-center gap-1 text-sm text-secondary group-hover:gap-2 transition-all">
-        Manage
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </span>
-    </a>
+  <!-- KPI strip -->
+  <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
+    <StatCard label="Agents" value="—" subtitle="Not yet connected" />
+    <StatCard label="Leads" value="—" subtitle="Pipeline not configured" />
+    <StatCard label="Content" value="—" subtitle="Pipeline not configured" />
+    <StatCard label="Balance" value="—" subtitle="Starling not connected" />
+  </div>
 
-    <div class="p-6 bg-grey-800/50 rounded-xl border border-grey-700/50">
-      <div class="flex items-center gap-3 mb-3">
-        <div class="p-2 bg-grey-700/50 rounded-lg">
-          <svg class="w-5 h-5 text-grey-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-          </svg>
-        </div>
-        <h2 class="text-lg font-semibold text-grey-500">Mission Control</h2>
+  <!-- Agent status strip -->
+  <div class="mb-8 p-4 bg-grey-800 rounded-xl border border-grey-700">
+    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-3">Agent Status</h2>
+    <div class="flex flex-wrap gap-6">
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-white">Clawdius</span>
+        <StatusBadge status="unknown" />
       </div>
-      <p class="text-sm text-grey-500">Personal command centre for tracking goals and projects.</p>
-      <span class="mt-4 inline-block text-xs font-mono text-grey-500 bg-grey-800 px-2 py-1 rounded">
-        Separate project
-      </span>
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-white">smagile.xyz</span>
+        <StatusBadge status="unknown" />
+      </div>
     </div>
+  </div>
 
-    <div class="p-6 bg-grey-800/50 rounded-xl border border-grey-700/50">
-      <div class="flex items-center gap-3 mb-3">
-        <div class="p-2 bg-grey-700/50 rounded-lg">
-          <svg class="w-5 h-5 text-grey-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-          </svg>
+  <!-- Section cards -->
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {sections.map((section) => (
+      <a
+        href={section.href}
+        class="group p-5 bg-grey-800 rounded-xl border border-grey-700 hover:border-secondary transition-all hover:shadow-lg hover:shadow-secondary/5"
+      >
+        <div class="flex items-center gap-3 mb-2">
+          <div class="p-2 bg-secondary/10 rounded-lg">
+            <svg class="w-5 h-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d={section.icon} />
+            </svg>
+          </div>
+          <h2 class="text-base font-semibold text-white">{section.label}</h2>
         </div>
-        <h2 class="text-lg font-semibold text-grey-500">API Services</h2>
-      </div>
-      <p class="text-sm text-grey-500">Job trawler, CV generator, and other tools.</p>
-      <span class="mt-4 inline-block text-xs font-mono text-grey-500 bg-grey-800 px-2 py-1 rounded">
-        Separate project
-      </span>
-    </div>
+        <p class="text-sm text-warm-300">{section.description}</p>
+      </a>
+    ))}
   </div>
 </AdminLayout>

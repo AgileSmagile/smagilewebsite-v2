@@ -1,0 +1,22 @@
+---
+interface Props {
+  segments: Array<{ label: string; href?: string }>;
+}
+
+const { segments } = Astro.props;
+---
+
+<nav aria-label="Breadcrumb" class="mb-6">
+  <ol class="flex items-center gap-1.5 text-sm text-warm-300">
+    {segments.map((seg, i) => (
+      <>
+        {i > 0 && <span class="text-grey-500">/</span>}
+        {seg.href ? (
+          <li><a href={seg.href} class="hover:text-secondary transition-colors">{seg.label}</a></li>
+        ) : (
+          <li class="text-white font-medium">{seg.label}</li>
+        )}
+      </>
+    ))}
+  </ol>
+</nav>

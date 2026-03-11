@@ -1,0 +1,35 @@
+---
+interface Props {
+  label: string;
+  value: string | number;
+  subtitle?: string;
+  trend?: 'up' | 'down' | 'flat';
+}
+
+const { label, value, subtitle, trend } = Astro.props;
+
+const trendColours: Record<string, string> = {
+  up: 'text-green-400',
+  down: 'text-red-400',
+  flat: 'text-grey-500',
+};
+
+const trendIcons: Record<string, string> = {
+  up: 'M5 10l7-7m0 0l7 7m-7-7v18',
+  down: 'M19 14l-7 7m0 0l-7-7m7 7V3',
+  flat: 'M5 12h14',
+};
+---
+
+<div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+  <p class="text-xs font-medium text-warm-300 uppercase tracking-wider">{label}</p>
+  <div class="mt-2 flex items-baseline gap-2">
+    <p class="text-2xl font-bold text-white font-heading">{value}</p>
+    {trend && (
+      <svg class:list={['w-4 h-4', trendColours[trend]]} fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d={trendIcons[trend]} />
+      </svg>
+    )}
+  </div>
+  {subtitle && <p class="mt-1 text-xs text-grey-500">{subtitle}</p>}
+</div>

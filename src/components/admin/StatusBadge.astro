@@ -1,0 +1,27 @@
+---
+interface Props {
+  status: 'online' | 'offline' | 'degraded' | 'unknown';
+  label?: string;
+}
+
+const { status, label } = Astro.props;
+
+const colours: Record<string, string> = {
+  online: 'bg-green-500',
+  offline: 'bg-red-500',
+  degraded: 'bg-amber-500',
+  unknown: 'bg-grey-500',
+};
+
+const labels: Record<string, string> = {
+  online: 'Online',
+  offline: 'Offline',
+  degraded: 'Degraded',
+  unknown: 'Unknown',
+};
+---
+
+<span class="inline-flex items-center gap-1.5 text-xs">
+  <span class:list={['w-2 h-2 rounded-full', colours[status]]}></span>
+  <span class="text-warm-300">{label || labels[status]}</span>
+</span>
