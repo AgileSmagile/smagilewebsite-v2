@@ -1,0 +1,29 @@
+---
+import PublicLayout from '../layouts/PublicLayout.astro';
+---
+
+<PublicLayout title="Page not found" description="The page you were looking for does not exist.">
+  <section class="flex flex-col items-center justify-center px-4 py-24 text-center">
+    <p class="text-7xl font-bold font-heading text-secondary">404</p>
+    <h1 class="mt-4 text-2xl font-bold text-grey-900 dark:text-white font-heading">
+      Page not found
+    </h1>
+    <p class="mt-2 max-w-md text-warm-600 dark:text-warm-300">
+      The page you were looking for does not exist or has been moved.
+    </p>
+    <div class="mt-8 flex gap-4">
+      <a
+        href="/"
+        class="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+      >
+        Back to home
+      </a>
+      <a
+        href="/contact/"
+        class="rounded-lg border border-grey-300 dark:border-grey-600 px-5 py-2.5 text-sm font-medium text-grey-700 dark:text-warm-300 hover:bg-grey-100 dark:hover:bg-grey-800 transition-colors"
+      >
+        Get in touch
+      </a>
+    </div>
+  </section>
+</PublicLayout>
