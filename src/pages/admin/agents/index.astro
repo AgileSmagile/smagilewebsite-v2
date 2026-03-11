@@ -1,0 +1,38 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
+import AgentCard from '../../../components/admin/AgentCard.astro';
+import { getAgentStatuses } from '../../../lib/admin/agents';
+
+export const prerender = false;
+
+const agents = await getAgentStatuses();
+const onlineCount = agents.filter((a) => a.status === 'online').length;
+const totalCount = agents.length;
+---
+
+<AdminLayout title="Agents">
+  <Breadcrumb segments={[
+    { label: 'Mission Control', href: '/admin/' },
+    { label: 'Agents' },
+  ]} />
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-white font-heading">Agent Monitoring</h1>
+    <p class="mt-1 text-sm text-warm-300">
+      {onlineCount} of {totalCount} agents online
+    </p>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {agents.map((agent) => (
+      <AgentCard agent={agent} />
+    ))}
+  </div>
+
+  {agents.length === 0 && (
+    <div class="text-center py-12">
+      <p class="text-warm-300">No agents registered.</p>
+    </div>
+  )}
+</AdminLayout>

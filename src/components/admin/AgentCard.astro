@@ -1,0 +1,44 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import type { AgentInfo } from '../../lib/admin/agents';
+
+interface Props {
+  agent: AgentInfo;
+}
+
+const { agent } = Astro.props;
+---
+
+<div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-base font-semibold text-white">{agent.name}</h3>
+    <StatusBadge status={agent.status} />
+  </div>
+  <p class="text-sm text-warm-300 mb-4">{agent.description}</p>
+  <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+    {agent.responseTimeMs !== null && (
+      <div>
+        <dt class="text-grey-500">Response</dt>
+        <dd class="text-white font-mono">{agent.responseTimeMs}ms</dd>
+      </div>
+    )}
+    {agent.version && (
+      <div>
+        <dt class="text-grey-500">Version</dt>
+        <dd class="text-white font-mono">{agent.version}</dd>
+      </div>
+    )}
+    {agent.lastChecked && (
+      <div class="col-span-2">
+        <dt class="text-grey-500">Last checked</dt>
+        <dd class="text-warm-300">{new Date(agent.lastChecked).toLocaleTimeString('en-GB')}</dd>
+      </div>
+    )}
+    {!agent.healthUrl && (
+      <div class="col-span-2">
+        <dt class="text-grey-500">Health endpoint</dt>
+        <dd class="text-warm-300">Not configured</dd>
+      </div>
+    )}
+  </dl>
+</div>

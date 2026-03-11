@@ -2,10 +2,13 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import StatCard from '../../components/admin/StatCard.astro';
 import StatusBadge from '../../components/admin/StatusBadge.astro';
+import { getAgentStatuses } from '../../lib/admin/agents';
 
 export const prerender = false;
 
 const userEmail = Astro.request.headers.get('Cf-Access-Authenticated-User-Email');
+const agents = await getAgentStatuses();
+const agentsOnline = agents.filter((a) => a.status === 'online').length;
 const greeting = (() => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -33,7 +36,7 @@ const sections = [
 
   <!-- KPI strip -->
   <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
-    <StatCard label="Agents" value="—" subtitle="Not yet connected" />
+    <StatCard label="Agents" value={`${agentsOnline}/${agents.length}`} subtitle={agentsOnline > 0 ? `${agentsOnline} online` : 'None online'} />
     <StatCard label="Leads" value="—" subtitle="Pipeline not configured" />
     <StatCard label="Content" value="—" subtitle="Pipeline not configured" />
     <StatCard label="Balance" value="—" subtitle="Starling not connected" />
@@ -41,16 +44,17 @@ const sections = [
 
   <!-- Agent status strip -->
   <div class="mb-8 p-4 bg-grey-800 rounded-xl border border-grey-700">
-    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-3">Agent Status</h2>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider">Agent Status</h2>
+      <a href="/admin/agents/" class="text-xs text-secondary hover:underline">View all</a>
+    </div>
     <div class="flex flex-wrap gap-6">
-      <div class="flex items-center gap-2">
-        <span class="text-sm text-white">Clawdius</span>
-        <StatusBadge status="unknown" />
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-sm text-white">smagile.xyz</span>
-        <StatusBadge status="unknown" />
-      </div>
+      {agents.map((agent) => (
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white">{agent.name}</span>
+          <StatusBadge status={agent.status} />
+        </div>
+      ))}
     </div>
   </div>
 
