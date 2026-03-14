@@ -1,0 +1,131 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
+import StatCard from '../../../components/admin/StatCard.astro';
+
+export const prerender = false;
+
+const contentItems = {
+  linkedin: [
+    { title: "Why your Scrum Master isn't a project manager", status: 'draft', date: '17 Mar' },
+    { title: 'Kanban metrics that actually matter', status: 'scheduled', date: '19 Mar' },
+    { title: 'The smagile approach to team coaching', status: 'idea', date: null },
+  ],
+  blog: [
+    { title: 'Lean Coffee: what it is and how to run one', status: 'published', date: '8 Mar' },
+    { title: 'Flow metrics for non-technical leaders', status: 'draft', date: '21 Mar' },
+  ],
+  youtube: [
+    { title: 'Introduction to ProKanban', status: 'script', date: '28 Mar' },
+  ],
+};
+
+const channelLabels: Record<string, string> = {
+  linkedin: 'LinkedIn',
+  blog: 'Blog',
+  youtube: 'YouTube',
+};
+
+const statusColours: Record<string, string> = {
+  published: 'bg-green-500/20 text-green-400',
+  scheduled: 'bg-blue-500/20 text-blue-400',
+  draft: 'bg-amber-500/20 text-amber-400',
+  idea: 'bg-grey-500/20 text-grey-400',
+  script: 'bg-purple-500/20 text-purple-400',
+};
+
+const statusLabels: Record<string, string> = {
+  published: 'Published',
+  scheduled: 'Scheduled',
+  draft: 'Draft',
+  idea: 'Idea',
+  script: 'Script',
+};
+---
+
+<AdminLayout title="Content Pipeline">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Content' },
+  ]} />
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-white font-heading">Content Pipeline</h1>
+    <p class="mt-1 text-sm text-warm-300">Publishing dashboard across all channels</p>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
+    <StatCard label="In Progress" value="5" subtitle="Across all channels" />
+    <StatCard label="Scheduled" value="3" subtitle="Queued for publishing" />
+    <StatCard label="Published This Month" value="8" subtitle="March 2026" />
+    <StatCard label="Total Views" value="2.4k" subtitle="All channels combined" />
+  </div>
+
+  <!-- Content queue -->
+  <div class="mb-8">
+    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Content Queue</h2>
+
+    <div class="grid gap-4">
+      {Object.entries(contentItems).map(([channel, items]) => (
+        <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-white">{channelLabels[channel]}</h3>
+            <span class="text-xs text-grey-500">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
+          </div>
+
+          <div class="divide-y divide-grey-700">
+            {items.map((item) => (
+              <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="text-sm text-white truncate">{item.title}</span>
+                </div>
+                <div class="flex items-center gap-3 shrink-0 ml-4">
+                  <span class:list={['inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', statusColours[item.status]]}>
+                    {statusLabels[item.status]}
+                  </span>
+                  {item.date ? (
+                    <span class="text-xs text-grey-500 w-16 text-right">
+                      {item.status === 'published' ? '' : 'Due '}{item.date}
+                    </span>
+                  ) : (
+                    <span class="text-xs text-grey-500 w-16 text-right">No date</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Publishing cadence -->
+  <div class="mb-8">
+    <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
+      <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Publishing Cadence</h2>
+
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-white">LinkedIn</span>
+          <span class="text-sm text-warm-300">2 posts/week</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-white">Blog</span>
+          <span class="text-sm text-warm-300">1 article/fortnight</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-white">YouTube</span>
+          <span class="text-sm text-warm-300">1 video/month</span>
+        </div>
+      </div>
+
+      <p class="mt-4 text-xs text-grey-500">Cadence targets. Actual publishing tracked above.</p>
+    </div>
+  </div>
+
+  <!-- Bottom note -->
+  <p class="text-xs text-grey-500 text-center">
+    Live data integration coming soon. This view shows placeholder data.
+  </p>
+</AdminLayout>
