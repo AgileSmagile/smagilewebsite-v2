@@ -1,0 +1,84 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
+import StatCard from '../../../components/admin/StatCard.astro';
+import AgentCard from '../../../components/admin/AgentCard.astro';
+import { getAgentStatuses } from '../../../lib/admin/agents';
+
+export const prerender = false;
+
+const agents = await getAgentStatuses();
+const onlineCount = agents.filter((a) => a.status === 'online').length;
+const totalCount = agents.length;
+---
+
+<AdminLayout title="Projects & Agents">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Projects & Agents' },
+  ]} />
+
+  <!-- Section 1: Mosaic CV -->
+  <section class="mb-10">
+    <div class="mb-4">
+      <h2 class="text-xl font-bold text-white font-heading">Mosaic CV</h2>
+      <p class="mt-0.5 text-sm text-warm-300">mosaic.smagile.co</p>
+    </div>
+
+    <div class="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-4">
+      <StatCard label="Lines of Code" value="8.5k" subtitle="TypeScript source" />
+      <StatCard label="Tests" value="593" subtitle="Passing" trend="up" />
+      <StatCard label="Lint Errors" value="0" subtitle="No issues" trend="flat" />
+      <StatCard label="Vulnerabilities" value="0" subtitle="npm audit clean" trend="flat" />
+      <StatCard label="Build Time" value="4.2s" subtitle="Next.js production" />
+      <StatCard label="Change Velocity" value="+3.7k / -1.2k" subtitle="Last 30 days" />
+    </div>
+
+    <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-secondary mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <p class="text-sm font-medium text-white">Live metrics coming soon</p>
+          <p class="mt-1 text-xs text-warm-300">
+            Updated automatically on each push to main. The values shown above are placeholders.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: Agent Status -->
+  <section class="mb-10">
+    <div class="mb-4">
+      <h2 class="text-xl font-bold text-white font-heading">Agent Status</h2>
+      <p class="mt-0.5 text-sm text-warm-300">
+        {onlineCount} of {totalCount} agents online
+      </p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {agents.map((agent) => (
+        <AgentCard agent={agent} />
+      ))}
+    </div>
+
+    {agents.length === 0 && (
+      <div class="text-center py-12">
+        <p class="text-warm-300">No agents registered.</p>
+      </div>
+    )}
+  </section>
+
+  <!-- Section 3: smagile.co (future) -->
+  <section>
+    <div class="mb-4">
+      <h2 class="text-xl font-bold text-white font-heading">smagile.co</h2>
+    </div>
+
+    <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+      <p class="text-sm text-warm-300">Metrics coming soon.</p>
+    </div>
+  </section>
+</AdminLayout>
