@@ -96,11 +96,12 @@ export function isConnected(): boolean {
 // --- OAuth flow ---
 
 function getClientId(): string {
-  return import.meta.env.FREEAGENT_CLIENT_ID ?? '';
+  // process.env for SSR runtime access — import.meta.env is build-time only
+  return process.env.FREEAGENT_CLIENT_ID ?? '';
 }
 
 function getClientSecret(): string {
-  return import.meta.env.FREEAGENT_CLIENT_SECRET ?? '';
+  return process.env.FREEAGENT_CLIENT_SECRET ?? '';
 }
 
 export function getAuthUrl(redirectUri: string): string {
