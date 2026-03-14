@@ -244,12 +244,16 @@ export async function getBankAccounts(): Promise<FreeAgentBankAccount[]> {
 
 export async function getInvoices(params?: Record<string, string>): Promise<FreeAgentInvoice[]> {
   const data = await apiGet<{ invoices: FreeAgentInvoice[] }>('/invoices', params);
-  return data?.invoices ?? [];
+  const invoices = data?.invoices ?? [];
+  console.log(`[FreeAgent] Invoices: ${invoices.length} returned, statuses: ${invoices.map(i => i.status).join(', ')}`);
+  return invoices;
 }
 
 export async function getExpenses(params?: Record<string, string>): Promise<FreeAgentExpense[]> {
   const data = await apiGet<{ expenses: FreeAgentExpense[] }>('/expenses', params);
-  return data?.expenses ?? [];
+  const expenses = data?.expenses ?? [];
+  console.log(`[FreeAgent] Expenses: ${expenses.length} returned`);
+  return expenses;
 }
 
 export async function getBills(params?: Record<string, string>): Promise<FreeAgentBill[]> {

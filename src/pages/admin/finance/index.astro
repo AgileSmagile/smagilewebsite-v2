@@ -45,7 +45,7 @@ if (connected) {
   [company, bankAccounts, recentInvoices, recentExpenses, pnl] = await Promise.all([
     getCompany(),
     getBankAccounts(),
-    getInvoices({ sort: 'updated_at', per_page: '5' }),
+    getInvoices({ sort: 'updated_at', per_page: '10' }),
     getExpenses({ from_date: firstOfMonth, to_date: today }),
     getProfitAndLoss(firstOfMonth, today),
   ]);
@@ -56,9 +56,9 @@ if (connected) {
     totalBankBalance = formatCurrency(total);
   }
 
-  // Outstanding invoices
+  // Outstanding invoices — FreeAgent statuses are lowercase
   const outstanding = recentInvoices.filter(
-    (inv) => inv.status === 'Open' || inv.status === 'Overdue' || inv.status === 'Sent',
+    (inv) => ['open', 'overdue', 'sent', 'Open', 'Overdue', 'Sent'].includes(inv.status),
   );
   outstandingInvoiceCount = outstanding.length;
   if (outstanding.length > 0) {
