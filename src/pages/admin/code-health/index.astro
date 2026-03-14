@@ -1,0 +1,46 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
+import StatCard from '../../../components/admin/StatCard.astro';
+
+export const prerender = false;
+---
+
+<AdminLayout title="Code Health">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Code Health' },
+  ]} />
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-white font-heading">Code Health</h1>
+    <p class="mt-1 text-sm text-warm-300">Mosaic CV codebase metrics</p>
+  </div>
+
+  <!-- KPI grid -->
+  <div class="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-8">
+    <StatCard label="Lines of Code" value="8.5k" subtitle="TypeScript source" />
+    <StatCard label="Tests" value="593" subtitle="Passing" trend="up" />
+    <StatCard label="Lint Errors" value="0" subtitle="No issues" trend="flat" />
+    <StatCard label="Vulnerabilities" value="0" subtitle="npm audit clean" trend="flat" />
+    <StatCard label="Build Time" value="4.2s" subtitle="Next.js production" />
+    <StatCard label="Change Volume" value="+3.7k / -1.2k" subtitle="Last 30 days" />
+  </div>
+
+  <!-- Placeholder notice -->
+  <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-secondary mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <p class="text-sm font-medium text-white">Live data coming soon</p>
+        <p class="mt-1 text-xs text-warm-300">
+          Metrics will update automatically on each push to main. The values shown above are placeholders.
+          Once the Supabase integration is wired up, this page will pull from the
+          <code class="text-secondary">code_health_snapshots</code> table.
+        </p>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
