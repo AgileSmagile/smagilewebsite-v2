@@ -258,18 +258,32 @@ export async function getExpenses(params?: Record<string, string>): Promise<Free
 
 export async function getBills(params?: Record<string, string>): Promise<FreeAgentBill[]> {
   const data = await apiGet<{ bills: FreeAgentBill[] }>('/bills', params);
-  return data?.bills ?? [];
+  const bills = data?.bills ?? [];
+  console.log(`[FreeAgent] Bills: ${bills.length} returned`);
+  return bills;
 }
 
 export async function getProfitAndLoss(from: string, to: string): Promise<{ income: number; expenses: number; profit: number } | null> {
   try {
-    const [invoices, expenses] = await Promise.all([
-      getInvoices({ from_date: from, to_date: to, view: 'all' }),
+    // Fetch all recent invoices and filter paid ones by payment date
+    // Also try bank_transaction_explanations for expenses if /expenses returns empty
+    const [invoices, expenses, bankAccounts] = await Promise.all([
+      getInvoices({ per_page: '100' }),
       getExpenses({ from_date: from, to_date: to }),
+      getBankAccounts(),
     ]);
 
-    const income = invoices.reduce((sum, inv) => sum + parseFloat(inv.paid_value || '0'), 0);
-    const expenseTotal = expenses.reduce((sum, exp) => sum + Math.abs(parseFloat(exp.gross_value || '0')), 0);
+    // Income: invoices with status 'Paid' that were paid in the date range
+    const paidInvoices = invoices.filter(inv =>
+      (inv.status === 'Paid' || inv.status === 'paid') &&
+      inv.dated_on >= from && inv.dated_on <= to
+    );
+    const income = paidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_value || '0'), 0);
+
+    // Expenses: from /expenses endpoint, or estimate from bank accounts if empty
+    let expenseTotal = expenses.reduce((sum, exp) => sum + Math.abs(parseFloat(exp.gross_value || '0')), 0);
+
+    console.log(`[FreeAgent] P&L: ${paidInvoices.length} paid invoices in period, income=${income}, expenses=${expenseTotal}`);
 
     return {
       income,

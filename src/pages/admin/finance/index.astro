@@ -8,6 +8,7 @@ import {
   getBankAccounts,
   getInvoices,
   getExpenses,
+  getBills,
   getProfitAndLoss,
 } from '../../../lib/admin/freeagent';
 
@@ -42,13 +43,19 @@ if (connected) {
   const firstOfMonth = `${year}-${month}-01`;
   const today = `${year}-${month}-${String(now.getDate()).padStart(2, '0')}`;
 
-  [company, bankAccounts, recentInvoices, recentExpenses, pnl] = await Promise.all([
+  const [companyRes, bankRes, invoiceRes, expenseRes, billsRes, pnlRes] = await Promise.all([
     getCompany(),
     getBankAccounts(),
     getInvoices({ sort: 'updated_at', per_page: '10' }),
     getExpenses({ from_date: firstOfMonth, to_date: today }),
+    getBills({ from_date: firstOfMonth, to_date: today }),
     getProfitAndLoss(firstOfMonth, today),
   ]);
+  company = companyRes;
+  bankAccounts = bankRes;
+  recentInvoices = invoiceRes;
+  recentExpenses = expenseRes;
+  pnl = pnlRes;
 
   // Bank balance
   if (bankAccounts.length > 0) {
@@ -71,13 +78,10 @@ if (connected) {
     outstandingInvoiceTotal = formatCurrency(0);
   }
 
-  // Monthly expenses
-  if (recentExpenses.length > 0) {
-    const total = recentExpenses.reduce((sum, exp) => sum + Math.abs(parseFloat(exp.gross_value || '0')), 0);
-    monthlyExpenseTotal = formatCurrency(total);
-  } else {
-    monthlyExpenseTotal = formatCurrency(0);
-  }
+  // Monthly expenses (from expenses endpoint + bills)
+  const expTotal = recentExpenses.reduce((sum, exp) => sum + Math.abs(parseFloat(exp.gross_value || '0')), 0);
+  const billTotal = billsRes.reduce((sum, bill) => sum + parseFloat(bill.total_value || '0'), 0);
+  monthlyExpenseTotal = formatCurrency(expTotal + billTotal);
 
   // Profit/loss
   if (pnl) {
