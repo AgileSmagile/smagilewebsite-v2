@@ -1,0 +1,329 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
+import StatCard from '../../../components/admin/StatCard.astro';
+import {
+  isConnected,
+  getCompany,
+  getBankAccounts,
+  getInvoices,
+  getExpenses,
+  getProfitAndLoss,
+} from '../../../lib/admin/freeagent';
+
+export const prerender = false;
+
+const connected = isConnected();
+
+// Query parameters for status messages
+const error = Astro.url.searchParams.get('error');
+const justConnected = Astro.url.searchParams.get('connected') === '1';
+const justDisconnected = Astro.url.searchParams.get('disconnected') === '1';
+
+// Data (only fetched if connected)
+let company: Awaited<ReturnType<typeof getCompany>> = null;
+let bankAccounts: Awaited<ReturnType<typeof getBankAccounts>> = [];
+let recentInvoices: Awaited<ReturnType<typeof getInvoices>> = [];
+let recentExpenses: Awaited<ReturnType<typeof getExpenses>> = [];
+let pnl: Awaited<ReturnType<typeof getProfitAndLoss>> = null;
+
+// KPI values
+let totalBankBalance = 'N/A';
+let outstandingInvoiceCount = 0;
+let outstandingInvoiceTotal = 'N/A';
+let monthlyExpenseTotal = 'N/A';
+let profitLoss = 'N/A';
+let profitTrend: 'up' | 'down' | 'flat' = 'flat';
+
+if (connected) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const firstOfMonth = `${year}-${month}-01`;
+  const today = `${year}-${month}-${String(now.getDate()).padStart(2, '0')}`;
+
+  [company, bankAccounts, recentInvoices, recentExpenses, pnl] = await Promise.all([
+    getCompany(),
+    getBankAccounts(),
+    getInvoices({ sort: 'updated_at', per_page: '5' }),
+    getExpenses({ from_date: firstOfMonth, to_date: today }),
+    getProfitAndLoss(firstOfMonth, today),
+  ]);
+
+  // Bank balance
+  if (bankAccounts.length > 0) {
+    const total = bankAccounts.reduce((sum, a) => sum + parseFloat(a.current_balance || '0'), 0);
+    totalBankBalance = formatCurrency(total);
+  }
+
+  // Outstanding invoices
+  const outstanding = recentInvoices.filter(
+    (inv) => inv.status === 'Open' || inv.status === 'Overdue' || inv.status === 'Sent',
+  );
+  outstandingInvoiceCount = outstanding.length;
+  if (outstanding.length > 0) {
+    const total = outstanding.reduce(
+      (sum, inv) => sum + (parseFloat(inv.total_value || '0') - parseFloat(inv.paid_value || '0')),
+      0,
+    );
+    outstandingInvoiceTotal = formatCurrency(total);
+  } else {
+    outstandingInvoiceTotal = formatCurrency(0);
+  }
+
+  // Monthly expenses
+  if (recentExpenses.length > 0) {
+    const total = recentExpenses.reduce((sum, exp) => sum + Math.abs(parseFloat(exp.gross_value || '0')), 0);
+    monthlyExpenseTotal = formatCurrency(total);
+  } else {
+    monthlyExpenseTotal = formatCurrency(0);
+  }
+
+  // Profit/loss
+  if (pnl) {
+    profitLoss = formatCurrency(pnl.profit);
+    profitTrend = pnl.profit > 0 ? 'up' : pnl.profit < 0 ? 'down' : 'flat';
+  }
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatDate(dateStr: string): string {
+  try {
+    return new Date(dateStr).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function invoiceStatusColour(status: string): string {
+  switch (status) {
+    case 'Paid':
+      return 'text-green-400';
+    case 'Overdue':
+      return 'text-red-400';
+    case 'Open':
+    case 'Sent':
+      return 'text-yellow-400';
+    case 'Draft':
+      return 'text-grey-500';
+    default:
+      return 'text-warm-300';
+  }
+}
+---
+
+<AdminLayout title="Finance">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Finance' },
+  ]} />
+
+  {/* Status messages */}
+  {justConnected && (
+    <div class="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-xl">
+      <p class="text-sm text-green-300">FreeAgent connected successfully.</p>
+    </div>
+  )}
+
+  {justDisconnected && (
+    <div class="mb-6 p-4 bg-yellow-900/30 border border-yellow-700 rounded-xl">
+      <p class="text-sm text-yellow-300">FreeAgent disconnected.</p>
+    </div>
+  )}
+
+  {error && (
+    <div class="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-xl">
+      <p class="text-sm text-red-300">
+        {error === 'no_code'
+          ? 'FreeAgent did not return an authorisation code. Please try again.'
+          : error === 'exchange_failed'
+            ? 'Failed to exchange the authorisation code for tokens. Check the server logs.'
+            : `Connection error: ${error}`}
+      </p>
+    </div>
+  )}
+
+  {!connected ? (
+    /* --- Not connected state --- */
+    <section class="max-w-lg">
+      <div class="p-6 bg-grey-800 rounded-xl border border-grey-700">
+        <div class="flex items-start gap-4">
+          <svg class="w-8 h-8 text-secondary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <h2 class="text-lg font-bold text-white font-heading">Connect FreeAgent</h2>
+            <p class="mt-2 text-sm text-warm-300">
+              Connect your FreeAgent account to see financial data here. This integration is read-only; smagile.co will never modify your FreeAgent data.
+            </p>
+            <a
+              href="/admin/finance/connect"
+              class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/80 rounded-lg transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Connect FreeAgent
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  ) : (
+    /* --- Connected state --- */
+    <>
+      {/* Company info */}
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          {company ? (
+            <>
+              <h2 class="text-xl font-bold text-white font-heading">{company.name}</h2>
+              <p class="mt-0.5 text-sm text-warm-300">FreeAgent ({company.currency || 'GBP'})</p>
+            </>
+          ) : (
+            <>
+              <h2 class="text-xl font-bold text-white font-heading">FreeAgent</h2>
+              <p class="mt-0.5 text-sm text-warm-300">Company details unavailable</p>
+            </>
+          )}
+        </div>
+        <a
+          href="/admin/finance/disconnect"
+          class="text-xs text-warm-300 hover:text-red-400 transition-colors"
+        >
+          Disconnect
+        </a>
+      </div>
+
+      {/* KPI row */}
+      <section class="mb-8">
+        <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Bank Balance" value={totalBankBalance} subtitle="All accounts" />
+          <StatCard
+            label="Outstanding Invoices"
+            value={String(outstandingInvoiceCount)}
+            subtitle={outstandingInvoiceTotal}
+          />
+          <StatCard label="Monthly Expenses" value={monthlyExpenseTotal} subtitle="Current month" />
+          <StatCard label="Profit / Loss" value={profitLoss} subtitle="Current month estimate" trend={profitTrend} />
+        </div>
+      </section>
+
+      {/* Recent invoices */}
+      <section class="mb-8">
+        <h3 class="text-lg font-bold text-white font-heading mb-4">Recent Invoices</h3>
+        {recentInvoices.length > 0 ? (
+          <div class="overflow-x-auto rounded-xl border border-grey-700">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-grey-800 text-xs text-warm-300 uppercase tracking-wider">
+                <tr>
+                  <th class="px-4 py-3">Reference</th>
+                  <th class="px-4 py-3">Date</th>
+                  <th class="px-4 py-3">Due</th>
+                  <th class="px-4 py-3 text-right">Total</th>
+                  <th class="px-4 py-3 text-right">Paid</th>
+                  <th class="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-grey-700">
+                {recentInvoices.slice(0, 5).map((inv) => (
+                  <tr class="bg-grey-800/50">
+                    <td class="px-4 py-3 text-white font-medium">{inv.reference || '-'}</td>
+                    <td class="px-4 py-3 text-warm-300">{formatDate(inv.dated_on)}</td>
+                    <td class="px-4 py-3 text-warm-300">{formatDate(inv.due_on)}</td>
+                    <td class="px-4 py-3 text-white text-right">{formatCurrency(parseFloat(inv.total_value || '0'))}</td>
+                    <td class="px-4 py-3 text-warm-300 text-right">{formatCurrency(parseFloat(inv.paid_value || '0'))}</td>
+                    <td class:list={['px-4 py-3 font-medium', invoiceStatusColour(inv.status)]}>{inv.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+            <p class="text-sm text-warm-300">No invoices found, or data unavailable.</p>
+          </div>
+        )}
+      </section>
+
+      {/* Recent expenses */}
+      <section class="mb-8">
+        <h3 class="text-lg font-bold text-white font-heading mb-4">Expenses This Month</h3>
+        {recentExpenses.length > 0 ? (
+          <div class="overflow-x-auto rounded-xl border border-grey-700">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-grey-800 text-xs text-warm-300 uppercase tracking-wider">
+                <tr>
+                  <th class="px-4 py-3">Description</th>
+                  <th class="px-4 py-3">Category</th>
+                  <th class="px-4 py-3">Date</th>
+                  <th class="px-4 py-3 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-grey-700">
+                {recentExpenses.slice(0, 5).map((exp) => (
+                  <tr class="bg-grey-800/50">
+                    <td class="px-4 py-3 text-white font-medium">{exp.description || '-'}</td>
+                    <td class="px-4 py-3 text-warm-300">{exp.category || '-'}</td>
+                    <td class="px-4 py-3 text-warm-300">{formatDate(exp.dated_on)}</td>
+                    <td class="px-4 py-3 text-white text-right">{formatCurrency(Math.abs(parseFloat(exp.gross_value || '0')))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+            <p class="text-sm text-warm-300">No expenses found for the current month, or data unavailable.</p>
+          </div>
+        )}
+      </section>
+
+      {/* Bank accounts */}
+      <section class="mb-8">
+        <h3 class="text-lg font-bold text-white font-heading mb-4">Bank Accounts</h3>
+        {bankAccounts.length > 0 ? (
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {bankAccounts.map((account) => (
+              <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+                <p class="text-xs font-medium text-warm-300 uppercase tracking-wider">{account.name}</p>
+                <p class="mt-2 text-2xl font-bold text-white font-heading">
+                  {formatCurrency(parseFloat(account.current_balance || '0'))}
+                </p>
+                <p class="mt-1 text-xs text-grey-500">{account.type} ({account.currency || 'GBP'})</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+            <p class="text-sm text-warm-300">No bank accounts found, or data unavailable.</p>
+          </div>
+        )}
+      </section>
+
+      {/* Footer note */}
+      <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-secondary mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-xs text-warm-300">
+            Data refreshed on page load from FreeAgent. Read-only access; smagile.co never modifies your FreeAgent data.
+          </p>
+        </div>
+      </div>
+    </>
+  )}
+</AdminLayout>

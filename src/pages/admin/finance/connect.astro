@@ -1,0 +1,10 @@
+---
+import { getAuthUrl } from '../../../lib/admin/freeagent';
+
+export const prerender = false;
+
+const redirectUri = 'https://smagile.co/admin/finance/callback';
+const authUrl = getAuthUrl(redirectUri);
+
+return Astro.redirect(authUrl);
+---

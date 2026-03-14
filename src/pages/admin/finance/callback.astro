@@ -1,0 +1,20 @@
+---
+import { exchangeCode } from '../../../lib/admin/freeagent';
+
+export const prerender = false;
+
+const code = Astro.url.searchParams.get('code');
+
+if (!code) {
+  return Astro.redirect('/admin/finance/?error=no_code');
+}
+
+const redirectUri = 'https://smagile.co/admin/finance/callback';
+const success = await exchangeCode(code, redirectUri);
+
+if (success) {
+  return Astro.redirect('/admin/finance/?connected=1');
+} else {
+  return Astro.redirect('/admin/finance/?error=exchange_failed');
+}
+---

@@ -1,0 +1,8 @@
+---
+import { deleteTokens } from '../../../lib/admin/freeagent';
+
+export const prerender = false;
+
+deleteTokens();
+return Astro.redirect('/admin/finance/?disconnected=1');
+---

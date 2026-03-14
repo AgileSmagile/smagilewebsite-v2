@@ -28,3 +28,6 @@ Thumbs.db
 
 # sessions (astro/node)
 .sessions/
+
+# FreeAgent OAuth tokens (sensitive, per-environment)
+.freeagent-tokens.json
