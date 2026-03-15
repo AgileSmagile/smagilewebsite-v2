@@ -1,20 +1,57 @@
 ---
-import { exchangeCode } from '../../../lib/admin/freeagent';
+import { exchangeCode, validateOAuthState } from '../../../lib/admin/freeagent';
 
 export const prerender = false;
 
 const code = Astro.url.searchParams.get('code');
+const state = Astro.url.searchParams.get('state');
+
+// Read the expected state from the cookie
+const cookies = Astro.request.headers.get('cookie') || '';
+const stateMatch = cookies.match(/(?:^|;\s*)fa_oauth_state=([^;]+)/);
+const expectedState = stateMatch ? stateMatch[1] : null;
+
+// Clear the state cookie regardless of outcome
+const clearCookie = 'fa_oauth_state=; HttpOnly; Secure; SameSite=Lax; Path=/admin/finance; Max-Age=0';
 
 if (!code) {
-  return Astro.redirect('/admin/finance/?error=no_code');
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: '/admin/finance/?error=no_code',
+      'Set-Cookie': clearCookie,
+    },
+  });
+}
+
+if (!validateOAuthState(state, expectedState)) {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: '/admin/finance/?error=state_mismatch',
+      'Set-Cookie': clearCookie,
+    },
+  });
 }
 
 const redirectUri = 'https://smagile.co/admin/finance/callback';
 const success = await exchangeCode(code, redirectUri);
 
 if (success) {
-  return Astro.redirect('/admin/finance/?connected=1');
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: '/admin/finance/?connected=1',
+      'Set-Cookie': clearCookie,
+    },
+  });
 } else {
-  return Astro.redirect('/admin/finance/?error=exchange_failed');
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: '/admin/finance/?error=exchange_failed',
+      'Set-Cookie': clearCookie,
+    },
+  });
 }
 ---

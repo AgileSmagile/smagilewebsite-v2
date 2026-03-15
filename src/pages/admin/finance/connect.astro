@@ -1,10 +1,16 @@
 ---
-import { getAuthUrl } from '../../../lib/admin/freeagent';
+import { getAuthUrl, generateOAuthState } from '../../../lib/admin/freeagent';
 
 export const prerender = false;
 
 const redirectUri = 'https://smagile.co/admin/finance/callback';
-const authUrl = getAuthUrl(redirectUri);
+const state = generateOAuthState();
+const authUrl = getAuthUrl(redirectUri, state);
 
-return Astro.redirect(authUrl);
+const headers = new Headers({
+  Location: authUrl,
+  'Set-Cookie': `fa_oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/admin/finance; Max-Age=600`,
+});
+
+return new Response(null, { status: 302, headers });
 ---

@@ -1,8 +1,45 @@
 ---
 import { deleteTokens } from '../../../lib/admin/freeagent';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 
 export const prerender = false;
 
-deleteTokens();
-return Astro.redirect('/admin/finance/?disconnected=1');
+if (Astro.request.method === 'POST') {
+  deleteTokens();
+  return Astro.redirect('/admin/finance/?disconnected=1');
+}
 ---
+
+<AdminLayout title="Disconnect FreeAgent">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Finance', href: '/admin/finance/' },
+    { label: 'Disconnect' },
+  ]} />
+
+  <section class="max-w-lg">
+    <div class="p-6 bg-grey-800 rounded-xl border border-grey-700">
+      <h2 class="text-lg font-bold text-white font-heading">Disconnect FreeAgent</h2>
+      <p class="mt-2 text-sm text-warm-300">
+        Are you sure you want to disconnect your FreeAgent account? You can reconnect at any time.
+      </p>
+      <div class="mt-4 flex gap-3">
+        <form method="POST">
+          <button
+            type="submit"
+            class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors cursor-pointer"
+          >
+            Disconnect
+          </button>
+        </form>
+        <a
+          href="/admin/finance/"
+          class="px-4 py-2 text-sm font-medium text-warm-300 hover:text-white border border-grey-600 rounded-lg transition-colors"
+        >
+          Cancel
+        </a>
+      </div>
+    </div>
+  </section>
+</AdminLayout>

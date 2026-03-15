@@ -17,9 +17,16 @@ export const prerender = false;
 const connected = isConnected();
 
 // Query parameters for status messages
-const error = Astro.url.searchParams.get('error');
+const errorParam = Astro.url.searchParams.get('error');
 const justConnected = Astro.url.searchParams.get('connected') === '1';
 const justDisconnected = Astro.url.searchParams.get('disconnected') === '1';
+
+const KNOWN_ERRORS: Record<string, string> = {
+  no_code: 'FreeAgent did not return an authorisation code. Please try again.',
+  exchange_failed: 'Failed to exchange the authorisation code for tokens. Check the server logs.',
+  state_mismatch: 'Security validation failed. Please try connecting again.',
+};
+const errorMessage = errorParam ? (KNOWN_ERRORS[errorParam] || 'An unexpected error occurred.') : null;
 
 // Data (only fetched if connected)
 let company: Awaited<ReturnType<typeof getCompany>> = null;
@@ -147,15 +154,9 @@ function invoiceStatusColour(status: string): string {
     </div>
   )}
 
-  {error && (
+  {errorMessage && (
     <div class="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-xl">
-      <p class="text-sm text-red-300">
-        {error === 'no_code'
-          ? 'FreeAgent did not return an authorisation code. Please try again.'
-          : error === 'exchange_failed'
-            ? 'Failed to exchange the authorisation code for tokens. Check the server logs.'
-            : `Connection error: ${error}`}
-      </p>
+      <p class="text-sm text-red-300">{errorMessage}</p>
     </div>
   )}
 
@@ -203,12 +204,14 @@ function invoiceStatusColour(status: string): string {
             </>
           )}
         </div>
-        <a
-          href="/admin/finance/disconnect"
-          class="text-xs text-warm-300 hover:text-red-400 transition-colors"
-        >
-          Disconnect
-        </a>
+        <form method="POST" action="/admin/finance/disconnect" class="inline">
+          <button
+            type="submit"
+            class="text-xs text-warm-300 hover:text-red-400 transition-colors cursor-pointer"
+          >
+            Disconnect
+          </button>
+        </form>
       </div>
 
       {/* KPI row */}

@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 const FA_API = 'https://api.freeagent.com/v2';
 const FA_AUTH_URL = 'https://api.freeagent.com/v2/approve_app';
@@ -74,7 +75,7 @@ function readTokens(): TokenData | null {
 }
 
 function writeTokens(tokens: TokenData): void {
-  writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2), 'utf-8');
+  writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2), { encoding: 'utf-8', mode: 0o600 });
 }
 
 export function deleteTokens(): boolean {
@@ -104,11 +105,21 @@ function getClientSecret(): string {
   return process.env.FREEAGENT_CLIENT_SECRET ?? '';
 }
 
-export function getAuthUrl(redirectUri: string): string {
+export function generateOAuthState(): string {
+  return randomBytes(32).toString('hex');
+}
+
+export function validateOAuthState(state: string | null, expected: string | null): boolean {
+  if (!state || !expected) return false;
+  return state === expected;
+}
+
+export function getAuthUrl(redirectUri: string, state: string): string {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: getClientId(),
     redirect_uri: redirectUri,
+    state,
   });
   return `${FA_AUTH_URL}?${params.toString()}`;
 }
@@ -244,23 +255,17 @@ export async function getBankAccounts(): Promise<FreeAgentBankAccount[]> {
 
 export async function getInvoices(params?: Record<string, string>): Promise<FreeAgentInvoice[]> {
   const data = await apiGet<{ invoices: FreeAgentInvoice[] }>('/invoices', params);
-  const invoices = data?.invoices ?? [];
-  console.log(`[FreeAgent] Invoices: ${invoices.length} returned, statuses: ${invoices.map(i => i.status).join(', ')}`);
-  return invoices;
+  return data?.invoices ?? [];
 }
 
 export async function getExpenses(params?: Record<string, string>): Promise<FreeAgentExpense[]> {
   const data = await apiGet<{ expenses: FreeAgentExpense[] }>('/expenses', params);
-  const expenses = data?.expenses ?? [];
-  console.log(`[FreeAgent] Expenses: ${expenses.length} returned`);
-  return expenses;
+  return data?.expenses ?? [];
 }
 
 export async function getBills(params?: Record<string, string>): Promise<FreeAgentBill[]> {
   const data = await apiGet<{ bills: FreeAgentBill[] }>('/bills', params);
-  const bills = data?.bills ?? [];
-  console.log(`[FreeAgent] Bills: ${bills.length} returned`);
-  return bills;
+  return data?.bills ?? [];
 }
 
 export async function getProfitAndLoss(from: string, to: string): Promise<{ income: number; expenses: number; profit: number } | null> {
@@ -282,8 +287,6 @@ export async function getProfitAndLoss(from: string, to: string): Promise<{ inco
 
     // Expenses: from /expenses endpoint, or estimate from bank accounts if empty
     let expenseTotal = expenses.reduce((sum, exp) => sum + Math.abs(parseFloat(exp.gross_value || '0')), 0);
-
-    console.log(`[FreeAgent] P&L: ${paidInvoices.length} paid invoices in period, income=${income}, expenses=${expenseTotal}`);
 
     return {
       income,
