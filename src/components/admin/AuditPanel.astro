@@ -1,0 +1,52 @@
+---
+/**
+ * Reusable collapsible audit data panel.
+ * Used on /admin/projects/ for code health detail sections.
+ * Designed to be project-agnostic so it works for any project with a collector.
+ */
+interface Props {
+  title: string;
+  countLabel?: string;
+  items: Array<{ label: string; value: string }>;
+  /** Number of items to show before "Show all" expansion. Default 5. */
+  initialCount?: number;
+}
+
+const { title, countLabel, items, initialCount = 5 } = Astro.props;
+const visible = items.slice(0, initialCount);
+const overflow = items.slice(initialCount);
+---
+
+{items.length > 0 && (
+  <details class="bg-grey-800 rounded-xl border border-grey-700">
+    <summary class="px-4 py-3 text-xs font-medium text-warm-300 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none">
+      {title}
+      {countLabel && (
+        <span class="text-grey-500 normal-case tracking-normal ml-1">({items.length} {countLabel})</span>
+      )}
+    </summary>
+    <div class="px-4 pb-3 space-y-1.5">
+      {visible.map((item) => (
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-warm-300 font-mono truncate mr-2">{item.label}</span>
+          <span class="text-white font-mono whitespace-nowrap">{item.value}</span>
+        </div>
+      ))}
+      {overflow.length > 0 && (
+        <details class="mt-1">
+          <summary class="text-xs text-grey-500 cursor-pointer hover:text-warm-300 transition-colors">
+            Show all ({items.length})
+          </summary>
+          <div class="mt-1.5 space-y-1.5">
+            {overflow.map((item) => (
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-warm-300 font-mono truncate mr-2">{item.label}</span>
+                <span class="text-white font-mono whitespace-nowrap">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  </details>
+)}

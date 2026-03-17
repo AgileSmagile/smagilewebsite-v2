@@ -25,6 +25,14 @@ export interface CodeHealthSnapshot {
   type_safety_any_count: number | null;
   todo_fixme_count: number | null;
   created_at: string;
+  // Detailed audit data (from raw_data JSONB column)
+  top_files?: Array<{ path: string; lines: number }>;
+  lines_by_directory?: Array<{ directory: string; lines: number }>;
+  bloat_files?: Array<{ path: string; lines: number }>;
+  todo_hotspots?: Array<{ path: string; count: number }>;
+  git_churn?: Array<{ path: string; changes: number }>;
+  type_definitions?: Array<{ path: string; count: number }>;
+  file_type_breakdown?: Array<{ extension: string; lines: number; files: number }>;
 }
 
 export type Trend = 'up' | 'down' | 'flat';
@@ -86,6 +94,33 @@ const CACHE_TTL_FUNNEL = 15 * 60 * 1000;       // 15 minutes
 // Code Health
 // -------------------------------------------------------------------
 
+/** Merge detailed audit fields from raw_data JSONB into the snapshot. */
+function mergeRawData(
+  row: (CodeHealthSnapshot & { raw_data?: Record<string, unknown> }) | null,
+): CodeHealthSnapshot | null {
+  if (!row) return null;
+  const raw = row.raw_data;
+  if (!raw || typeof raw !== 'object') return row;
+
+  const auditFields = [
+    'top_files',
+    'lines_by_directory',
+    'bloat_files',
+    'todo_hotspots',
+    'git_churn',
+    'type_definitions',
+    'file_type_breakdown',
+  ] as const;
+
+  for (const field of auditFields) {
+    if (Array.isArray(raw[field])) {
+      (row as Record<string, unknown>)[field] = raw[field];
+    }
+  }
+
+  return row;
+}
+
 async function fetchCodeHealth(): Promise<CodeHealthMetrics | null> {
   const cached = cacheGet<CodeHealthMetrics>('metrics:code-health');
   if (cached) return cached;
@@ -95,7 +130,7 @@ async function fetchCodeHealth(): Promise<CodeHealthMetrics | null> {
 
   const { data, error } = await sb
     .from('code_health_snapshots')
-    .select('*')
+    .select('*, raw_data')
     .order('created_at', { ascending: false })
     .limit(2);
 
@@ -105,8 +140,8 @@ async function fetchCodeHealth(): Promise<CodeHealthMetrics | null> {
   }
 
   const result: CodeHealthMetrics = {
-    latest: data?.[0] ?? null,
-    previous: data?.[1] ?? null,
+    latest: mergeRawData(data?.[0] ?? null),
+    previous: mergeRawData(data?.[1] ?? null),
   };
 
   cacheSet('metrics:code-health', result, CACHE_TTL_CODE_HEALTH);
@@ -393,6 +428,14 @@ export function formatRelativeDate(dateStr: string | null): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+/** Strip leading path noise to show relative path from src/. */
+export function formatFilePath(fullPath: string): string {
+  const srcIdx = fullPath.indexOf('src/');
+  if (srcIdx !== -1) return fullPath.slice(srcIdx);
+  // If no src/ found, strip common prefixes
+  return fullPath.replace(/^.*?(?=(?:app|pages|components|lib|utils|hooks)\/)/, '');
 }
 
 /** Estimate cost from token count (Claude Sonnet pricing approximation). */

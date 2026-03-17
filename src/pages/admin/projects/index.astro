@@ -3,6 +3,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import AgentCard from '../../../components/admin/AgentCard.astro';
+import AuditPanel from '../../../components/admin/AuditPanel.astro';
 import { getAgentStatuses } from '../../../lib/admin/agents';
 import { projects, type ProjectInfo } from '../../../lib/admin/projects';
 import { getSupabaseAdmin } from '../../../lib/admin/supabase';
@@ -13,6 +14,7 @@ import {
   formatDuration,
   formatPct,
   formatRelativeDate,
+  formatFilePath,
   estimateAiCost,
   type ProjectMetrics,
   type Trend,
@@ -78,7 +80,7 @@ function funnelPct(value: number, max: number): number {
   ]} />
 
   {/* ── Project tabs ── */}
-  <nav class="flex gap-1 mb-8 border-b border-grey-700" aria-label="Project tabs">
+  <nav class="flex gap-1 mb-6 border-b border-grey-700" aria-label="Project tabs">
     {projects.map((project) => (
       <a
         href={`/admin/projects/?project=${project.id}`}
@@ -97,14 +99,14 @@ function funnelPct(value: number, max: number): number {
   {/* ── Mosaic CV ── */}
   {activeTab === 'mosaic-cv' && (
     <div>
-      <div class="mb-6">
+      <div class="mb-4">
         <h2 class="text-xl font-bold text-white font-heading">Mosaic CV</h2>
         <p class="mt-0.5 text-sm text-warm-300">mosaic.smagile.co</p>
       </div>
 
       {/* Missing env vars warning */}
       {!supabaseConfigured && (
-        <div class="p-4 mb-6 bg-amber-900/30 rounded-xl border border-amber-700/50">
+        <div class="p-4 mb-4 bg-amber-900/30 rounded-xl border border-amber-700/50">
           <div class="flex items-start gap-3">
             <svg class="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -123,7 +125,7 @@ function funnelPct(value: number, max: number): number {
 
       {/* Connection error */}
       {supabaseConfigured && mosaicMetrics && mosaicMetrics.errors.length > 0 && (
-        <div class="p-4 mb-6 bg-red-900/30 rounded-xl border border-red-700/50">
+        <div class="p-4 mb-4 bg-red-900/30 rounded-xl border border-red-700/50">
           <p class="text-sm font-medium text-red-200 mb-2">Some metrics failed to load</p>
           <ul class="text-xs text-red-300/80 space-y-1">
             {mosaicMetrics.errors.map((e) => (
@@ -134,11 +136,11 @@ function funnelPct(value: number, max: number): number {
       )}
 
       {/* ── Code Health ── */}
-      <section class="mb-10">
-        <h3 class="text-lg font-semibold text-white mb-4">Code Health</h3>
+      <section class="mb-6">
+        <h3 class="text-lg font-semibold text-white mb-3">Code Health</h3>
         {latest ? (
           <>
-            <div class="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-3">
+            <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
               <StatCard
                 label="Lines of Code"
                 value={formatNumber(latest.sloc ?? latest.lines_of_code)}
@@ -182,10 +184,6 @@ function funnelPct(value: number, max: number): number {
                 subtitle="Client bundle"
                 trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
               />
-            </div>
-
-            {/* Secondary code health metrics */}
-            <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-3">
               <StatCard
                 label="Lint Errors"
                 value={formatNumber(latest.lint_errors)}
@@ -193,17 +191,21 @@ function funnelPct(value: number, max: number): number {
                 trend={invertTrend(getTrend(latest.lint_errors, prev?.lint_errors))}
               />
               <StatCard
+                label="TODOs / FIXMEs"
+                value={formatNumber(latest.todo_fixme_count)}
+                subtitle="In codebase"
+                trend={invertTrend(getTrend(latest.todo_fixme_count, prev?.todo_fixme_count))}
+              />
+            </div>
+
+            {/* Secondary code health row */}
+            <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
+              <StatCard
                 label="Change Velocity"
                 value={latest.insertions_30d !== null
                   ? `+${formatNumber(latest.insertions_30d)} / -${formatNumber(latest.deletions_30d)}`
                   : '--'}
                 subtitle="Last 30 days"
-              />
-              <StatCard
-                label="TODOs / FIXMEs"
-                value={formatNumber(latest.todo_fixme_count)}
-                subtitle="In codebase"
-                trend={invertTrend(getTrend(latest.todo_fixme_count, prev?.todo_fixme_count))}
               />
               <StatCard
                 label="Last Snapshot"
@@ -213,9 +215,50 @@ function funnelPct(value: number, max: number): number {
                 })}
               />
             </div>
+
+            {/* ── Detailed Audit Data ── */}
+            {(latest.top_files || latest.lines_by_directory || latest.bloat_files || latest.todo_hotspots || latest.git_churn || latest.type_definitions || latest.file_type_breakdown) && (
+              <div class="grid gap-3 grid-cols-1 lg:grid-cols-2 mt-3">
+                <AuditPanel
+                  title="Largest Files"
+                  countLabel="files"
+                  items={(latest.top_files ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
+                />
+                <AuditPanel
+                  title="Lines by Directory"
+                  countLabel="dirs"
+                  items={(latest.lines_by_directory ?? []).map((d) => ({ label: d.directory, value: `${formatNumber(d.lines)} LOC` }))}
+                />
+                <AuditPanel
+                  title="Bloat Signals"
+                  countLabel="files over 300 lines"
+                  items={(latest.bloat_files ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
+                />
+                <AuditPanel
+                  title="TODO Hotspots"
+                  countLabel="files"
+                  items={(latest.todo_hotspots ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.count} TODOs` }))}
+                />
+                <AuditPanel
+                  title="Git Churn (7 days)"
+                  countLabel="files"
+                  items={(latest.git_churn ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.changes} changes` }))}
+                />
+                <AuditPanel
+                  title="Type Definitions"
+                  countLabel="files"
+                  items={(latest.type_definitions ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.count} types` }))}
+                />
+                <AuditPanel
+                  title="File Types"
+                  countLabel="types"
+                  items={(latest.file_type_breakdown ?? []).map((f) => ({ label: f.extension, value: `${formatNumber(f.lines)} lines / ${f.files} files` }))}
+                />
+              </div>
+            )}
           </>
         ) : supabaseConfigured ? (
-          <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+          <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
             <p class="text-sm text-warm-300">No code health snapshots found. Data is collected on each push to main.</p>
           </div>
         ) : null}
@@ -223,17 +266,32 @@ function funnelPct(value: number, max: number): number {
 
       {/* ── Usage Overview ── */}
       {supabaseConfigured && (
-        <section class="mb-10">
-          <h3 class="text-lg font-semibold text-white mb-4">Usage Overview</h3>
+        <section class="mb-6">
+          <h3 class="text-lg font-semibold text-white mb-3">Usage Overview</h3>
           {usage ? (
             <>
-              <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-3">
+              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
                 <StatCard label="Total Users" value={formatNumber(usage.totalUsers)} />
-                <StatCard label="DAU (est.)" value={formatNumber(usage.dauEstimate)} subtitle="Last 24 hours" />
-                <StatCard label="WAU (est.)" value={formatNumber(usage.wauEstimate)} subtitle="Last 7 days" />
-                <StatCard label="MAU (est.)" value={formatNumber(usage.mauEstimate)} subtitle="Last 30 days" />
+                <StatCard
+                  label="DAU (est.)"
+                  value={formatNumber(usage.dauEstimate)}
+                  subtitle="Last 24 hours"
+                  title="Daily Active Users: unique users who generated a CV in the last 24 hours"
+                />
+                <StatCard
+                  label="WAU (est.)"
+                  value={formatNumber(usage.wauEstimate)}
+                  subtitle="Last 7 days"
+                  title="Weekly Active Users: unique users who generated a CV in the last 7 days"
+                />
+                <StatCard
+                  label="MAU (est.)"
+                  value={formatNumber(usage.mauEstimate)}
+                  subtitle="Last 30 days"
+                  title="Monthly Active Users: unique users who generated a CV in the last 30 days"
+                />
               </div>
-              <div class="grid gap-4 grid-cols-2 lg:grid-cols-3 mb-3">
+              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
                 <StatCard label="Total Outputs" value={formatNumber(usage.totalOutputs)} subtitle="Completed CVs + variants" />
                 <StatCard label="Outputs This Week" value={formatNumber(usage.outputsThisWeek)} />
                 <StatCard
@@ -242,114 +300,228 @@ function funnelPct(value: number, max: number): number {
                   subtitle={`${usage.failedOutputs} failed of ${usage.totalOutputAttempts} attempts`}
                   trend={errorRate !== null && errorRate > 5 ? 'down' : 'flat'}
                 />
-              </div>
 
-              {/* Subscription breakdown */}
-              {Object.keys(usage.subscriptionBreakdown).length > 0 && (
-                <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
-                  <p class="text-xs font-medium text-warm-300 uppercase tracking-wider mb-3">Subscription Tiers</p>
-                  <div class="flex flex-wrap gap-4">
-                    {Object.entries(usage.subscriptionBreakdown).map(([tier, count]) => (
-                      <div class="text-center">
-                        <p class="text-lg font-bold text-white font-heading">{count}</p>
-                        <p class="text-xs text-grey-500">{tier}</p>
-                      </div>
-                    ))}
+                {/* Subscription breakdown inline */}
+                {Object.keys(usage.subscriptionBreakdown).length > 0 && (
+                  <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+                    <p class="text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Subscription Tiers</p>
+                    <div class="flex flex-wrap gap-3">
+                      {Object.entries(usage.subscriptionBreakdown).map(([tier, count]) => (
+                        <div class="text-center">
+                          <p class="text-lg font-bold text-white font-heading">{count}</p>
+                          <p class="text-xs text-grey-500">{tier}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </>
           ) : (
-            <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+            <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
               <p class="text-sm text-warm-300">Usage data unavailable.</p>
             </div>
           )}
         </section>
       )}
 
-      {/* ── Product Health / Funnel ── */}
-      {supabaseConfigured && funnel && (
-        <section class="mb-10">
-          <h3 class="text-lg font-semibold text-white mb-4">Product Health</h3>
-          <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
-            <p class="text-xs font-medium text-warm-300 uppercase tracking-wider mb-4">User Funnel</p>
-            <div class="space-y-3">
-              {[
-                { label: 'Signed up', value: funnel.totalSignups },
-                { label: 'Created a CV', value: funnel.usersWithCv },
-                { label: 'Created 2+ CVs', value: funnel.usersWithMultipleCvs },
-                { label: 'Exported', value: funnel.usersWhoExported },
-              ].map((step) => (
-                <div>
-                  <div class="flex items-center justify-between text-sm mb-1">
-                    <span class="text-warm-300">{step.label}</span>
-                    <span class="text-white font-mono font-medium">{step.value}</span>
+      {/* ── Product Health / Funnel + AI Usage side by side on desktop ── */}
+      <div class="grid gap-6 grid-cols-1 lg:grid-cols-2 mb-6">
+        {/* Product Health / Funnel */}
+        {supabaseConfigured && funnel && (
+          <section>
+            <h3 class="text-lg font-semibold text-white mb-3">Product Health</h3>
+            <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+              <p class="text-xs font-medium text-warm-300 uppercase tracking-wider mb-3">User Funnel</p>
+              <div class="space-y-2.5">
+                {[
+                  { label: 'Signed up', value: funnel.totalSignups },
+                  { label: 'Created a CV', value: funnel.usersWithCv },
+                  { label: 'Created 2+ CVs', value: funnel.usersWithMultipleCvs },
+                  { label: 'Exported', value: funnel.usersWhoExported },
+                ].map((step) => (
+                  <div>
+                    <div class="flex items-center justify-between text-sm mb-1">
+                      <span class="text-warm-300">{step.label}</span>
+                      <span class="text-white font-mono font-medium">{step.value}</span>
+                    </div>
+                    <div class="w-full bg-grey-700 rounded-full h-2">
+                      <div
+                        class="bg-secondary rounded-full h-2 transition-all"
+                        style={`width: ${funnelPct(step.value, funnel.totalSignups)}%`}
+                      />
+                    </div>
                   </div>
-                  <div class="w-full bg-grey-700 rounded-full h-2">
-                    <div
-                      class="bg-secondary rounded-full h-2 transition-all"
-                      style={`width: ${funnelPct(step.value, funnel.totalSignups)}%`}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── AI Usage ── */}
-      {supabaseConfigured && (
-        <section class="mb-10">
-          <h3 class="text-lg font-semibold text-white mb-4">AI Usage</h3>
-          {aiUsage ? (
-            <>
-              <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-3">
-                <StatCard
-                  label="Total Tokens"
-                  value={formatNumber(aiUsage.totalTokens)}
-                  subtitle={`Estimated cost: ${estimateAiCost(aiUsage.totalTokens)}`}
-                />
-                <StatCard label="Unique Users" value={formatNumber(aiUsage.uniqueUsers)} subtitle="Have used AI features" />
-                <StatCard label="Avg per User" value={formatNumber(aiUsage.avgTokensPerUser)} subtitle="Tokens" />
+                ))}
               </div>
-
-              {/* Interaction breakdown */}
-              {Object.keys(aiUsage.interactionBreakdown).length > 0 && (
-                <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
-                  <p class="text-xs font-medium text-warm-300 uppercase tracking-wider mb-3">Tokens by Interaction Type</p>
-                  <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Object.entries(aiUsage.interactionBreakdown)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([type, tokens]) => (
-                        <div class="flex items-center justify-between p-2 bg-grey-900 rounded-lg">
-                          <span class="text-xs text-warm-300 truncate mr-2">{type}</span>
-                          <span class="text-xs text-white font-mono whitespace-nowrap">{formatNumber(tokens)}</span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
-              <p class="text-sm text-warm-300">AI usage data unavailable.</p>
             </div>
-          )}
-        </section>
-      )}
+          </section>
+        )}
+
+        {/* AI Usage */}
+        {supabaseConfigured && (
+          <section>
+            <h3 class="text-lg font-semibold text-white mb-3">AI Usage</h3>
+            {aiUsage ? (
+              <div class="space-y-3">
+                <div class="grid gap-3 grid-cols-2">
+                  <StatCard
+                    label="Total Tokens"
+                    value={formatNumber(aiUsage.totalTokens)}
+                    subtitle={`Est. cost: ${estimateAiCost(aiUsage.totalTokens)}`}
+                  />
+                  <StatCard label="Unique Users" value={formatNumber(aiUsage.uniqueUsers)} subtitle="Used AI features" />
+                </div>
+                <StatCard label="Avg per User" value={formatNumber(aiUsage.avgTokensPerUser)} subtitle="Tokens" />
+
+                {/* Interaction breakdown */}
+                {Object.keys(aiUsage.interactionBreakdown).length > 0 && (
+                  <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+                    <p class="text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Tokens by Interaction Type</p>
+                    <div class="grid grid-cols-1 gap-1.5">
+                      {Object.entries(aiUsage.interactionBreakdown)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([type, tokens]) => (
+                          <div class="flex items-center justify-between p-1.5 bg-grey-900 rounded-lg">
+                            <span class="text-xs text-warm-300 truncate mr-2">{type}</span>
+                            <span class="text-xs text-white font-mono whitespace-nowrap">{formatNumber(tokens)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+                <p class="text-sm text-warm-300">AI usage data unavailable.</p>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+
+      {/* ── Placeholder metrics (coming soon) ── */}
+      <section class="mb-6">
+        <h3 class="text-lg font-semibold text-white mb-3">
+          Operational Metrics
+          <span class="text-xs font-normal text-grey-500 ml-2">coming soon</span>
+        </h3>
+        <div class="grid gap-3 grid-cols-2 lg:grid-cols-3">
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Time Since Last Deploy</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600">Coming soon</p>
+          </div>
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Release Frequency</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600">Deploys per week</p>
+          </div>
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Infrastructure Health</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600" title="Raspberry Pi CPU, memory and disk usage">Pi CPU / memory / disk</p>
+          </div>
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Churn Signals</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600">Users who have not returned</p>
+          </div>
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider" title="Time to Value: average time from signup to first CV generation">Time to Value</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600">Signup to first CV</p>
+          </div>
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider" title="p95 Response Time: 95th percentile server response time">p95 Response Time</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600">95th percentile latency</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Tech Stack & Integrations (collapsible) ── */}
+      <section class="mb-6 space-y-3">
+        <details class="bg-grey-800 rounded-xl border border-grey-700">
+          <summary class="px-4 py-3 text-sm font-medium text-warm-300 cursor-pointer hover:text-white transition-colors select-none">
+            Tech Stack
+          </summary>
+          <div class="px-4 pb-4">
+            <ul class="space-y-2 text-sm text-warm-300">
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Next.js 16</strong> (App Router, Turbopack)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Supabase</strong> (Postgres, Auth, Storage)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Tailwind CSS 4</strong></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Puppeteer</strong> + @sparticuz/chromium (PDF generation)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">docx</strong> (Word export)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">@anthropic-ai/sdk</strong> (Claude AI)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Hosting:</strong> Vercel (free tier)</span>
+              </li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="bg-grey-800 rounded-xl border border-grey-700">
+          <summary class="px-4 py-3 text-sm font-medium text-warm-300 cursor-pointer hover:text-white transition-colors select-none">
+            Third-Party Integrations
+          </summary>
+          <div class="px-4 pb-4">
+            <ul class="space-y-2 text-sm text-warm-300">
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Supabase</strong> (prziqrhqzwcfvhrzapfa) - database, auth, storage</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Vercel</strong> - hosting, serverless functions</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Anthropic Claude</strong> - AI pipeline (CV generation, coaching, parsing)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">GoCardless</strong> - payment processing</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-secondary mt-0.5">&#8227;</span>
+                <span><strong class="text-white">Cloudflare</strong> - DNS, CDN</span>
+              </li>
+            </ul>
+          </div>
+        </details>
+      </section>
     </div>
   )}
 
   {/* ── smagile.co ── */}
   {activeTab === 'smagile-co' && (
     <div>
-      <div class="mb-6">
+      <div class="mb-4">
         <h2 class="text-xl font-bold text-white font-heading">smagile.co</h2>
         <p class="mt-0.5 text-sm text-warm-300">Company website and Mission Control</p>
       </div>
 
-      <div class="p-5 bg-grey-800 rounded-xl border border-grey-700 mb-6">
+      <div class="p-4 bg-grey-800 rounded-xl border border-grey-700 mb-4">
         <div class="flex items-start gap-3">
           <svg class="w-5 h-5 text-secondary mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -364,7 +536,7 @@ function funnelPct(value: number, max: number): number {
         </div>
       </div>
 
-      <div class="grid gap-4 grid-cols-2 lg:grid-cols-3">
+      <div class="grid gap-3 grid-cols-2 lg:grid-cols-3">
         <StatCard label="Hosting" value="Raspberry Pi" subtitle="Behind Cloudflare tunnel" />
         <StatCard label="Framework" value="Astro 5" subtitle="SSR with @astrojs/node" />
         <StatCard label="Repository" value="GitHub" subtitle="AgileSmagile/smagilewebsite-v2" />
@@ -373,15 +545,15 @@ function funnelPct(value: number, max: number): number {
   )}
 
   {/* ── Agent Status (always visible below project content) ── */}
-  <section class="mt-10 mb-10 pt-8 border-t border-grey-700">
-    <div class="mb-4">
+  <section class="mt-8 mb-8 pt-6 border-t border-grey-700">
+    <div class="mb-3">
       <h2 class="text-xl font-bold text-white font-heading">Agent Status</h2>
       <p class="mt-0.5 text-sm text-warm-300">
         {onlineCount} of {totalAgentCount} agents online
       </p>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {agents.map((agent) => (
         <AgentCard agent={agent} />
       ))}
