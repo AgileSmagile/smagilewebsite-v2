@@ -440,73 +440,47 @@ function funnelPct(value: number, max: number): number {
         </div>
       </section>
 
-      {/* ── Tech Stack & Integrations (collapsible) ── */}
-      <section class="mb-6 space-y-3">
+      {/* ── Tech Stack & Integrations (collapsible, side by side) ── */}
+      <section class="mb-6 grid gap-3 grid-cols-1 lg:grid-cols-2">
         <details class="bg-grey-800 rounded-xl border border-grey-700">
-          <summary class="px-4 py-3 text-sm font-medium text-warm-300 cursor-pointer hover:text-white transition-colors select-none">
+          <summary class="px-4 py-3 text-xs font-medium text-warm-300 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none">
             Tech Stack
           </summary>
-          <div class="px-4 pb-4">
-            <ul class="space-y-2 text-sm text-warm-300">
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Next.js 16</strong> (App Router, Turbopack)</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Supabase</strong> (Postgres, Auth, Storage)</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Tailwind CSS 4</strong></span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Puppeteer</strong> + @sparticuz/chromium (PDF generation)</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">docx</strong> (Word export)</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">@anthropic-ai/sdk</strong> (Claude AI)</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Hosting:</strong> Vercel (free tier)</span>
-              </li>
-            </ul>
+          <div class="px-4 pb-3 space-y-1">
+            {[
+              ['Next.js 16', 'App Router, Turbopack'],
+              ['Supabase', 'Postgres, Auth, Storage'],
+              ['Tailwind CSS 4', 'Styling'],
+              ['Puppeteer', 'PDF generation'],
+              ['docx', 'Word export'],
+              ['@anthropic-ai/sdk', 'Claude AI'],
+              ['Vercel', 'Hosting (free tier)'],
+            ].map(([tool, purpose]) => (
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-white font-mono">{tool}</span>
+                <span class="text-warm-300 truncate ml-2">{purpose}</span>
+              </div>
+            ))}
           </div>
         </details>
 
         <details class="bg-grey-800 rounded-xl border border-grey-700">
-          <summary class="px-4 py-3 text-sm font-medium text-warm-300 cursor-pointer hover:text-white transition-colors select-none">
+          <summary class="px-4 py-3 text-xs font-medium text-warm-300 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none">
             Third-Party Integrations
           </summary>
-          <div class="px-4 pb-4">
-            <ul class="space-y-2 text-sm text-warm-300">
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Supabase</strong> (prziqrhqzwcfvhrzapfa) - database, auth, storage</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Vercel</strong> - hosting, serverless functions</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Anthropic Claude</strong> - AI pipeline (CV generation, coaching, parsing)</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">GoCardless</strong> - payment processing</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-secondary mt-0.5">&#8227;</span>
-                <span><strong class="text-white">Cloudflare</strong> - DNS, CDN</span>
-              </li>
-            </ul>
+          <div class="px-4 pb-3 space-y-1">
+            {[
+              ['Supabase', 'Database, auth, storage'],
+              ['Vercel', 'Hosting, serverless'],
+              ['Anthropic Claude', 'AI pipeline'],
+              ['GoCardless', 'Payments'],
+              ['Cloudflare', 'DNS, CDN'],
+            ].map(([service, role]) => (
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-white font-mono">{service}</span>
+                <span class="text-warm-300 truncate ml-2">{role}</span>
+              </div>
+            ))}
           </div>
         </details>
       </section>
