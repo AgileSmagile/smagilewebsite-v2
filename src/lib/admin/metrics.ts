@@ -69,6 +69,26 @@ export interface FunnelMetrics {
   usersWhoExported: number;
 }
 
+export interface PipelineStage {
+  stageId: string;
+  durationMs: number;
+  status: string;
+}
+
+export interface PipelineRun {
+  id: string;
+  type: 'document' | 'variant';
+  completedAt: string;
+  durationMs: number;
+  status: string;
+  stages: PipelineStage[];
+}
+
+export interface PipelineMetrics {
+  runs: PipelineRun[];
+  percentiles: { p50: number; p85: number; p95: number };
+}
+
 export interface MetricsError {
   section: string;
   message: string;
@@ -79,6 +99,7 @@ export interface ProjectMetrics {
   usage: UsageMetrics | null;
   aiUsage: AiUsageMetrics | null;
   funnel: FunnelMetrics | null;
+  pipeline: PipelineMetrics | null;
   errors: MetricsError[];
 }
 
@@ -90,6 +111,7 @@ const CACHE_TTL_CODE_HEALTH = 10 * 60 * 1000; // 10 minutes
 const CACHE_TTL_USAGE = 5 * 60 * 1000;         // 5 minutes
 const CACHE_TTL_AI = 10 * 60 * 1000;           // 10 minutes
 const CACHE_TTL_FUNNEL = 15 * 60 * 1000;       // 15 minutes
+const CACHE_TTL_PIPELINE = 10 * 60 * 1000;     // 10 minutes
 
 // -------------------------------------------------------------------
 // Code Health
@@ -352,13 +374,168 @@ async function fetchFunnelMetrics(): Promise<FunnelMetrics | null> {
 }
 
 // -------------------------------------------------------------------
+// Pipeline Performance
+// -------------------------------------------------------------------
+
+/** Compute a percentile value from a sorted array of numbers. */
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = (p / 100) * (sorted.length - 1);
+  const lower = Math.floor(idx);
+  const upper = Math.ceil(idx);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower);
+}
+
+export async function fetchPipelineMetrics(): Promise<PipelineMetrics | null> {
+  const cached = cacheGet<PipelineMetrics>('metrics:pipeline');
+  if (cached) return cached;
+
+  const sb = getSupabaseAdmin();
+  if (!sb) return null;
+
+  try {
+    // Fetch documents and variants with pipeline timing
+    const [docsRes, variantsRes] = await Promise.all([
+      sb
+        .from('cv_documents')
+        .select('id, pipeline_started_at, pipeline_completed_at, pipeline_duration_ms, pipeline_status, created_at, config')
+        .not('pipeline_duration_ms', 'is', null),
+      sb
+        .from('cv_variants')
+        .select('id, document_id, pipeline_started_at, pipeline_completed_at, pipeline_duration_ms, pipeline_status, created_at, config')
+        .not('pipeline_duration_ms', 'is', null),
+    ]);
+
+    if (docsRes.error) {
+      console.error('[Metrics] pipeline cv_documents query failed:', docsRes.error.message);
+      return null;
+    }
+    if (variantsRes.error) {
+      console.error('[Metrics] pipeline cv_variants query failed:', variantsRes.error.message);
+      return null;
+    }
+
+    const docs = docsRes.data ?? [];
+    const variants = variantsRes.data ?? [];
+
+    // Collect all IDs for stage lookup
+    const docIds = docs.map((d) => d.id);
+    const variantIds = variants.map((v) => v.id);
+
+    // Fetch stage executions for all relevant runs
+    let stagesByDoc = new Map<string, PipelineStage[]>();
+    let stagesByVariant = new Map<string, PipelineStage[]>();
+
+    if (docIds.length > 0 || variantIds.length > 0) {
+      const stageQueries: Promise<void>[] = [];
+
+      if (docIds.length > 0) {
+        stageQueries.push(
+          sb
+            .from('pipeline_stage_executions')
+            .select('document_id, stage_id, duration_ms, status')
+            .in('document_id', docIds)
+            .then(({ data, error }) => {
+              if (error) {
+                console.error('[Metrics] pipeline stages (docs) query failed:', error.message);
+                return;
+              }
+              for (const row of data ?? []) {
+                const key = row.document_id as string;
+                const existing = stagesByDoc.get(key) ?? [];
+                existing.push({
+                  stageId: row.stage_id,
+                  durationMs: row.duration_ms ?? 0,
+                  status: row.status,
+                });
+                stagesByDoc.set(key, existing);
+              }
+            }),
+        );
+      }
+
+      if (variantIds.length > 0) {
+        stageQueries.push(
+          sb
+            .from('pipeline_stage_executions')
+            .select('variant_id, stage_id, duration_ms, status')
+            .in('variant_id', variantIds)
+            .then(({ data, error }) => {
+              if (error) {
+                console.error('[Metrics] pipeline stages (variants) query failed:', error.message);
+                return;
+              }
+              for (const row of data ?? []) {
+                const key = row.variant_id as string;
+                const existing = stagesByVariant.get(key) ?? [];
+                existing.push({
+                  stageId: row.stage_id,
+                  durationMs: row.duration_ms ?? 0,
+                  status: row.status,
+                });
+                stagesByVariant.set(key, existing);
+              }
+            }),
+        );
+      }
+
+      await Promise.all(stageQueries);
+    }
+
+    // Build pipeline runs
+    const runs: PipelineRun[] = [];
+
+    for (const doc of docs) {
+      runs.push({
+        id: doc.id,
+        type: 'document',
+        completedAt: doc.pipeline_completed_at ?? doc.created_at,
+        durationMs: doc.pipeline_duration_ms,
+        status: doc.pipeline_status ?? 'unknown',
+        stages: stagesByDoc.get(doc.id) ?? [],
+      });
+    }
+
+    for (const variant of variants) {
+      runs.push({
+        id: variant.id,
+        type: 'variant',
+        completedAt: variant.pipeline_completed_at ?? variant.created_at,
+        durationMs: variant.pipeline_duration_ms,
+        status: variant.pipeline_status ?? 'unknown',
+        stages: stagesByVariant.get(variant.id) ?? [],
+      });
+    }
+
+    // Sort by completion date ascending
+    runs.sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime());
+
+    // Compute percentiles from durations
+    const durations = runs.map((r) => r.durationMs).sort((a, b) => a - b);
+    const percentiles = {
+      p50: percentile(durations, 50),
+      p85: percentile(durations, 85),
+      p95: percentile(durations, 95),
+    };
+
+    const result: PipelineMetrics = { runs, percentiles };
+    cacheSet('metrics:pipeline', result, CACHE_TTL_PIPELINE);
+    return result;
+  } catch (err) {
+    console.error('[Metrics] Pipeline query failed:', err);
+    return null;
+  }
+}
+
+// -------------------------------------------------------------------
 // Public: fetch all metrics for Mosaic CV
 // -------------------------------------------------------------------
 
 export async function getMosaicMetrics(): Promise<ProjectMetrics> {
   const errors: MetricsError[] = [];
 
-  const [codeHealth, usage, aiUsage, funnel] = await Promise.all([
+  const [codeHealth, usage, aiUsage, funnel, pipeline] = await Promise.all([
     fetchCodeHealth().catch((err) => {
       errors.push({ section: 'Code Health', message: String(err) });
       return null;
@@ -375,9 +552,13 @@ export async function getMosaicMetrics(): Promise<ProjectMetrics> {
       errors.push({ section: 'Funnel', message: String(err) });
       return null;
     }),
+    fetchPipelineMetrics().catch((err) => {
+      errors.push({ section: 'Pipeline', message: String(err) });
+      return null;
+    }),
   ]);
 
-  return { codeHealth, usage, aiUsage, funnel, errors };
+  return { codeHealth, usage, aiUsage, funnel, pipeline, errors };
 }
 
 // -------------------------------------------------------------------

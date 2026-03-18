@@ -1,0 +1,452 @@
+---
+import type { PipelineMetrics, PipelineRun } from '../../lib/admin/metrics';
+import { formatDuration } from '../../lib/admin/metrics';
+
+interface Props {
+  metrics: PipelineMetrics;
+  window?: '1m' | '4m' | 'all';
+}
+
+const { metrics, window = '4m' } = Astro.props;
+
+// Filter runs by time window
+const now = Date.now();
+const windowMs: Record<string, number> = {
+  '1m': 30 * 24 * 60 * 60 * 1000,
+  '4m': 120 * 24 * 60 * 60 * 1000,
+};
+
+const cutoff = window === 'all' ? 0 : now - (windowMs[window] ?? windowMs['4m']);
+const filteredRuns = metrics.runs.filter(
+  (r) => new Date(r.completedAt).getTime() >= cutoff,
+);
+
+// Recompute percentiles for filtered window
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = (p / 100) * (sorted.length - 1);
+  const lower = Math.floor(idx);
+  const upper = Math.ceil(idx);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower);
+}
+
+const durations = filteredRuns.map((r) => r.durationMs).sort((a, b) => a - b);
+const p50 = percentile(durations, 50);
+const p85 = percentile(durations, 85);
+const p95 = percentile(durations, 95);
+
+// Chart dimensions
+const chartW = 800;
+const chartH = 260;
+const padL = 55;
+const padR = 70;
+const padT = 20;
+const padB = 40;
+const plotW = chartW - padL - padR;
+const plotH = chartH - padT - padB;
+
+// Compute scales
+const hasData = filteredRuns.length > 0;
+
+let minTime = 0;
+let maxTime = 1;
+let maxDuration = 1;
+
+if (hasData) {
+  const times = filteredRuns.map((r) => new Date(r.completedAt).getTime());
+  minTime = Math.min(...times);
+  maxTime = Math.max(...times);
+  // Add a small buffer if all runs at same time
+  if (maxTime === minTime) {
+    minTime -= 3600000;
+    maxTime += 3600000;
+  }
+  maxDuration = Math.max(...filteredRuns.map((r) => r.durationMs));
+  // Ensure percentile lines fit
+  maxDuration = Math.max(maxDuration, p95) * 1.1;
+}
+
+function xPos(dateStr: string): number {
+  const t = new Date(dateStr).getTime();
+  return padL + ((t - minTime) / (maxTime - minTime)) * plotW;
+}
+
+function yPos(ms: number): number {
+  return padT + plotH - (ms / maxDuration) * plotH;
+}
+
+// Generate date ticks (aim for ~5-8 ticks)
+function generateDateTicks(): Array<{ label: string; x: number }> {
+  if (!hasData) return [];
+  const range = maxTime - minTime;
+  const tickCount = Math.min(7, Math.max(3, Math.floor(plotW / 100)));
+  const ticks: Array<{ label: string; x: number }> = [];
+  for (let i = 0; i <= tickCount; i++) {
+    const t = minTime + (range * i) / tickCount;
+    const d = new Date(t);
+    const label = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    ticks.push({ label, x: padL + (plotW * i) / tickCount });
+  }
+  return ticks;
+}
+
+// Generate Y-axis ticks
+function generateDurationTicks(): Array<{ label: string; y: number }> {
+  if (!hasData) return [];
+  const tickCount = 5;
+  const ticks: Array<{ label: string; y: number }> = [];
+  for (let i = 0; i <= tickCount; i++) {
+    const ms = (maxDuration * i) / tickCount;
+    ticks.push({
+      label: ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`,
+      y: padT + plotH - (plotH * i) / tickCount,
+    });
+  }
+  return ticks;
+}
+
+const dateTicks = generateDateTicks();
+const durationTicks = generateDurationTicks();
+
+// Percentile lines
+const pLines = [
+  { value: p50, label: 'p50', colour: '#75bcbe' },
+  { value: p85, label: 'p85', colour: '#eab308' },
+  { value: p95, label: 'p95', colour: '#ef4444' },
+].filter((pl) => pl.value > 0 && pl.value <= maxDuration);
+
+// Build tooltip text for each run
+function tooltip(run: PipelineRun): string {
+  const d = new Date(run.completedAt);
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const completed = run.stages.filter((s) => s.status === 'completed').length;
+  return `${formatDuration(run.durationMs)} | ${date} ${time}\nStatus: ${run.status}\nType: ${run.type}\nStages completed: ${completed}/${run.stages.length}`;
+}
+
+// Serialise runs for client-side JS
+const runsJson = JSON.stringify(
+  filteredRuns.map((r) => ({
+    id: r.id,
+    type: r.type,
+    completedAt: r.completedAt,
+    durationMs: r.durationMs,
+    status: r.status,
+    stages: r.stages,
+  })),
+);
+
+// Most recent run for default stage breakdown
+const defaultRun = filteredRuns.length > 0 ? filteredRuns[filteredRuns.length - 1] : null;
+---
+
+<div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+  <div class="flex items-center justify-between mb-3">
+    <h4 class="text-sm font-medium text-warm-300 uppercase tracking-wider">
+      Cycle Time Scatter Plot
+    </h4>
+    <div class="flex gap-1" role="group" aria-label="Time window">
+      {(['1m', '4m', 'all'] as const).map((w) => (
+        <a
+          href={`?project=mosaic-cv&window=${w}`}
+          class:list={[
+            'px-2.5 py-1 text-xs rounded-md transition-colors',
+            window === w
+              ? 'bg-secondary/20 text-secondary font-medium'
+              : 'text-warm-300 hover:text-white hover:bg-grey-700',
+          ]}
+        >
+          {w === '1m' ? '1 month' : w === '4m' ? '4 months' : 'All time'}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  {hasData ? (
+    <div>
+      {/* SVG scatter plot */}
+      <div class="w-full overflow-hidden rounded-lg bg-grey-900" id="cycle-time-chart-container">
+        <svg
+          viewBox={`0 0 ${chartW} ${chartH}`}
+          class="w-full"
+          style={`max-height: 300px;`}
+          preserveAspectRatio="xMidYMid meet"
+          id="cycle-time-svg"
+        >
+          {/* Grid lines (horizontal) */}
+          {durationTicks.map((tick) => (
+            <line
+              x1={padL}
+              y1={tick.y}
+              x2={chartW - padR}
+              y2={tick.y}
+              stroke="#374151"
+              stroke-width="0.5"
+            />
+          ))}
+
+          {/* Grid lines (vertical) */}
+          {dateTicks.map((tick) => (
+            <line
+              x1={tick.x}
+              y1={padT}
+              x2={tick.x}
+              y2={padT + plotH}
+              stroke="#374151"
+              stroke-width="0.5"
+            />
+          ))}
+
+          {/* Percentile lines */}
+          {pLines.map((pl) => (
+            <g>
+              <line
+                x1={padL}
+                y1={yPos(pl.value)}
+                x2={chartW - padR}
+                y2={yPos(pl.value)}
+                stroke={pl.colour}
+                stroke-width="1"
+                stroke-dasharray="6 4"
+                opacity="0.7"
+              />
+              <text
+                x={chartW - padR + 6}
+                y={yPos(pl.value) + 4}
+                fill={pl.colour}
+                font-size="10"
+                font-family="monospace"
+                opacity="0.9"
+              >
+                {pl.label} {formatDuration(pl.value)}
+              </text>
+            </g>
+          ))}
+
+          {/* Y-axis labels */}
+          {durationTicks.map((tick) => (
+            <text
+              x={padL - 6}
+              y={tick.y + 3}
+              fill="#9ca3af"
+              font-size="10"
+              font-family="monospace"
+              text-anchor="end"
+            >
+              {tick.label}
+            </text>
+          ))}
+
+          {/* X-axis labels */}
+          {dateTicks.map((tick) => (
+            <text
+              x={tick.x}
+              y={padT + plotH + 20}
+              fill="#9ca3af"
+              font-size="10"
+              font-family="monospace"
+              text-anchor="middle"
+            >
+              {tick.label}
+            </text>
+          ))}
+
+          {/* Axis lines */}
+          <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="#4b5563" stroke-width="1" />
+          <line x1={padL} y1={padT + plotH} x2={chartW - padR} y2={padT + plotH} stroke="#4b5563" stroke-width="1" />
+
+          {/* Data dots */}
+          {filteredRuns.map((run) => {
+            const cx = xPos(run.completedAt);
+            const cy = yPos(run.durationMs);
+            const fill = run.status === 'complete' || run.status === 'completed' ? '#22c55e' : '#ef4444';
+            return (
+              <circle
+                cx={cx}
+                cy={cy}
+                r="5"
+                fill={fill}
+                opacity="0.85"
+                class="cycle-dot cursor-pointer hover:opacity-100"
+                data-run-id={run.id}
+                style="transition: r 0.15s ease, opacity 0.15s ease;"
+              >
+                <title>{tooltip(run)}</title>
+              </circle>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div class="flex items-center gap-4 mt-2 text-xs text-warm-300">
+        <span class="flex items-center gap-1.5">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>
+          Successful
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500"></span>
+          Failed
+        </span>
+        <span class="ml-auto text-grey-500">
+          {filteredRuns.length} run{filteredRuns.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {/* Stage breakdown */}
+      <div id="stage-breakdown" class="mt-4">
+        <p class="text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">
+          Stage Breakdown
+          <span id="stage-run-label" class="font-normal normal-case text-grey-500 ml-1">
+            {defaultRun ? '(most recent run)' : ''}
+          </span>
+        </p>
+        <div id="stage-bar-container">
+          {defaultRun && defaultRun.stages.length > 0 ? (
+            <div class="flex w-full h-8 rounded-lg overflow-hidden bg-grey-900" id="stage-bar">
+              {defaultRun.stages.map((stage, i) => {
+                const totalMs = defaultRun.stages.reduce((sum, s) => sum + s.durationMs, 0);
+                const pct = totalMs > 0 ? Math.max(2, (stage.durationMs / totalMs) * 100) : 0;
+                const bg =
+                  stage.status === 'completed' ? 'bg-secondary'
+                  : stage.status === 'skipped' ? 'bg-grey-600'
+                  : 'bg-red-500';
+                const abbrev = `S${i + 1}`;
+                return (
+                  <div
+                    class={`${bg} flex items-center justify-center text-xs font-mono text-white relative group`}
+                    style={`width: ${pct}%; min-width: 24px;`}
+                    title={`${stage.stageId}: ${formatDuration(stage.durationMs)} (${stage.status})`}
+                  >
+                    <span class="truncate px-0.5">{abbrev}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p class="text-xs text-grey-500">No stage data available for this run.</p>
+          )}
+        </div>
+        {defaultRun && defaultRun.stages.length > 0 && (
+          <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs" id="stage-legend">
+            {defaultRun.stages.map((stage, i) => {
+              const colourDot =
+                stage.status === 'completed' ? 'bg-secondary'
+                : stage.status === 'skipped' ? 'bg-grey-600'
+                : 'bg-red-500';
+              return (
+                <span class="flex items-center gap-1 text-warm-300">
+                  <span class={`inline-block w-2 h-2 rounded-sm ${colourDot}`}></span>
+                  S{i + 1}: {stage.stageId} ({formatDuration(stage.durationMs)})
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  ) : (
+    <div class="flex items-center justify-center h-48 bg-grey-900 rounded-lg">
+      <p class="text-sm text-warm-300">
+        Pipeline timing data will appear here as CVs are generated
+      </p>
+    </div>
+  )}
+</div>
+
+<script define:vars={{ runsJson }}>
+  // Client-side click handling for stage breakdown selection
+  const runs = JSON.parse(runsJson);
+
+  function formatDurationClient(ms) {
+    if (ms === null || ms === undefined) return '--';
+    if (ms < 1000) return ms + 'ms';
+    return (ms / 1000).toFixed(1) + 's';
+  }
+
+  function renderStageBreakdown(run) {
+    const barContainer = document.getElementById('stage-bar-container');
+    const legendContainer = document.getElementById('stage-legend');
+    const label = document.getElementById('stage-run-label');
+    if (!barContainer) return;
+
+    if (!run || !run.stages || run.stages.length === 0) {
+      barContainer.innerHTML = '<p class="text-xs text-grey-500">No stage data available for this run.</p>';
+      if (legendContainer) legendContainer.innerHTML = '';
+      if (label) label.textContent = '';
+      return;
+    }
+
+    const d = new Date(run.completedAt);
+    const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    if (label) label.textContent = `(${run.type} - ${dateStr} ${timeStr})`;
+
+    const totalMs = run.stages.reduce((sum, s) => sum + s.durationMs, 0);
+
+    // Build bar
+    let barHtml = '<div class="flex w-full h-8 rounded-lg overflow-hidden bg-grey-900">';
+    run.stages.forEach((stage, i) => {
+      const pct = totalMs > 0 ? Math.max(2, (stage.durationMs / totalMs) * 100) : 0;
+      const bg =
+        stage.status === 'completed' ? 'bg-secondary'
+        : stage.status === 'skipped' ? 'bg-grey-600'
+        : 'bg-red-500';
+      barHtml += `<div class="${bg} flex items-center justify-center text-xs font-mono text-white" style="width: ${pct}%; min-width: 24px;" title="${stage.stageId}: ${formatDurationClient(stage.durationMs)} (${stage.status})"><span class="truncate px-0.5">S${i + 1}</span></div>`;
+    });
+    barHtml += '</div>';
+    barContainer.innerHTML = barHtml;
+
+    // Build legend
+    let legendHtml = '';
+    run.stages.forEach((stage, i) => {
+      const colourDot =
+        stage.status === 'completed' ? 'bg-secondary'
+        : stage.status === 'skipped' ? 'bg-grey-600'
+        : 'bg-red-500';
+      legendHtml += `<span class="flex items-center gap-1 text-warm-300"><span class="inline-block w-2 h-2 rounded-sm ${colourDot}"></span>S${i + 1}: ${stage.stageId} (${formatDurationClient(stage.durationMs)})</span>`;
+    });
+
+    // Create or update legend container
+    const breakdownDiv = document.getElementById('stage-breakdown');
+    let existingLegend = document.getElementById('stage-legend');
+    if (existingLegend) {
+      existingLegend.innerHTML = legendHtml;
+    } else if (breakdownDiv) {
+      const newLegend = document.createElement('div');
+      newLegend.id = 'stage-legend';
+      newLegend.className = 'flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs';
+      newLegend.innerHTML = legendHtml;
+      breakdownDiv.appendChild(newLegend);
+    }
+  }
+
+  // Track selected dot
+  let selectedDotId = null;
+
+  // Attach click handlers to dots
+  document.querySelectorAll('.cycle-dot').forEach((dot) => {
+    dot.addEventListener('click', (e) => {
+      const runId = e.currentTarget.getAttribute('data-run-id');
+      const run = runs.find((r) => r.id === runId);
+      if (!run) return;
+
+      // Reset previously selected dot
+      if (selectedDotId) {
+        const prevDot = document.querySelector(`.cycle-dot[data-run-id="${selectedDotId}"]`);
+        if (prevDot) {
+          prevDot.setAttribute('r', '5');
+          prevDot.setAttribute('opacity', '0.85');
+        }
+      }
+
+      // Highlight selected dot
+      selectedDotId = runId;
+      e.currentTarget.setAttribute('r', '7');
+      e.currentTarget.setAttribute('opacity', '1');
+
+      renderStageBreakdown(run);
+    });
+  });
+</script>

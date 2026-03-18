@@ -4,6 +4,7 @@ import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import AgentCard from '../../../components/admin/AgentCard.astro';
 import AuditPanel from '../../../components/admin/AuditPanel.astro';
+import CycleTimeChart from '../../../components/admin/CycleTimeChart.astro';
 import { getAgentStatuses } from '../../../lib/admin/agents';
 import { projects, type ProjectInfo } from '../../../lib/admin/projects';
 import { getSupabaseAdmin } from '../../../lib/admin/supabase';
@@ -37,6 +38,13 @@ const totalAgentCount = agents.length;
 
 // Determine active project tab from query string
 const activeTab = Astro.url.searchParams.get('project') ?? 'mosaic-cv';
+
+// Pipeline time window
+const windowParam = Astro.url.searchParams.get('window');
+const pipelineWindow = (windowParam === '1m' || windowParam === '4m' || windowParam === 'all') ? windowParam : '4m';
+
+// Pipeline metrics
+const pipeline = mosaicMetrics?.pipeline;
 
 // Code health helpers
 const ch = mosaicMetrics?.codeHealth;
@@ -333,6 +341,20 @@ function funnelPct(value: number, max: number): number {
           ) : (
             <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
               <p class="text-sm text-warm-300">Usage data unavailable.</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Pipeline Performance ── */}
+      {supabaseConfigured && (
+        <section class="mb-6">
+          <h3 class="text-lg font-semibold text-white mb-3">Pipeline Performance</h3>
+          {pipeline ? (
+            <CycleTimeChart metrics={pipeline} window={pipelineWindow} />
+          ) : (
+            <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+              <p class="text-sm text-warm-300">Pipeline timing data will appear here as CVs are generated.</p>
             </div>
           )}
         </section>
