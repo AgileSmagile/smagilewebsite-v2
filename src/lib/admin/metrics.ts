@@ -40,6 +40,7 @@ export type Trend = 'up' | 'down' | 'flat';
 export interface CodeHealthMetrics {
   latest: CodeHealthSnapshot | null;
   previous: CodeHealthSnapshot | null;
+  history: CodeHealthSnapshot[];
 }
 
 export interface UsageMetrics {
@@ -132,16 +133,20 @@ async function fetchCodeHealth(): Promise<CodeHealthMetrics | null> {
     .from('code_health_snapshots')
     .select('*, raw_data')
     .order('created_at', { ascending: false })
-    .limit(2);
+    .limit(30);
 
   if (error) {
     console.error('[Metrics] code_health_snapshots query failed:', error.message);
     return null;
   }
 
+  // History in chronological order (oldest first)
+  const history = (data ?? []).map((row) => mergeRawData(row)!).reverse();
+
   const result: CodeHealthMetrics = {
     latest: mergeRawData(data?.[0] ?? null),
     previous: mergeRawData(data?.[1] ?? null),
+    history,
   };
 
   cacheSet('metrics:code-health', result, CACHE_TTL_CODE_HEALTH);
@@ -445,4 +450,17 @@ export function estimateAiCost(tokens: number): string {
   const cost = (tokens / 1_000_000) * 8;
   if (cost < 0.01) return '<$0.01';
   return `$${cost.toFixed(2)}`;
+}
+
+/**
+ * Extract a numeric field from a history array for sparkline display.
+ * Filters out null values and returns numbers oldest-first.
+ */
+export function extractSparkline(
+  history: CodeHealthSnapshot[],
+  field: keyof CodeHealthSnapshot,
+): number[] {
+  return history
+    .map((snap) => snap[field])
+    .filter((v): v is number => typeof v === 'number');
 }

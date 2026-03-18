@@ -1,13 +1,16 @@
 ---
+import Sparkline from './Sparkline.astro';
+
 interface Props {
   label: string;
   value: string | number;
   subtitle?: string;
   trend?: 'up' | 'down' | 'flat';
-  title?: string;
+  tooltip?: string;
+  sparkline?: number[];
 }
 
-const { label, value, subtitle, trend, title } = Astro.props;
+const { label, value, subtitle, trend, tooltip, sparkline } = Astro.props;
 
 const trendColours: Record<string, string> = {
   up: 'text-green-400',
@@ -22,14 +25,29 @@ const trendIcons: Record<string, string> = {
 };
 ---
 
-<div class="p-4 bg-grey-800 rounded-xl border border-grey-700" title={title}>
-  <p class="text-xs font-medium text-warm-300 uppercase tracking-wider">{label}</p>
+<div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+  {tooltip ? (
+    <span class="group relative inline-block">
+      <p class="text-xs font-medium text-warm-300 uppercase tracking-wider cursor-help border-b border-dotted border-warm-300/40">{label}</p>
+      <span class="pointer-events-none absolute z-10 bottom-full mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-grey-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+        {tooltip}
+        <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-grey-900"></span>
+      </span>
+    </span>
+  ) : (
+    <p class="text-xs font-medium text-warm-300 uppercase tracking-wider">{label}</p>
+  )}
   <div class="mt-2 flex items-baseline gap-2">
     <p class="text-2xl font-bold text-white font-heading">{value}</p>
     {trend && (
       <svg class:list={['w-4 h-4', trendColours[trend]]} fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d={trendIcons[trend]} />
       </svg>
+    )}
+    {sparkline && sparkline.length >= 2 && (
+      <div class="ml-auto self-center">
+        <Sparkline data={sparkline} />
+      </div>
     )}
   </div>
   {subtitle && <p class="mt-1 text-xs text-grey-500">{subtitle}</p>}

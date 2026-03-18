@@ -16,6 +16,7 @@ import {
   formatRelativeDate,
   formatFilePath,
   estimateAiCost,
+  extractSparkline,
   type ProjectMetrics,
   type Trend,
 } from '../../../lib/admin/metrics';
@@ -41,6 +42,7 @@ const activeTab = Astro.url.searchParams.get('project') ?? 'mosaic-cv';
 const ch = mosaicMetrics?.codeHealth;
 const latest = ch?.latest;
 const prev = ch?.previous;
+const history = ch?.history ?? [];
 
 // Usage helpers
 const usage = mosaicMetrics?.usage;
@@ -146,6 +148,7 @@ function funnelPct(value: number, max: number): number {
                 value={formatNumber(latest.sloc ?? latest.lines_of_code)}
                 subtitle={latest.sloc ? 'Source lines (excl. blanks/comments)' : 'Total lines'}
                 trend={getTrend(latest.sloc ?? latest.lines_of_code, prev?.sloc ?? prev?.lines_of_code)}
+                sparkline={extractSparkline(history, latest.sloc ? 'sloc' : 'lines_of_code')}
               />
               <StatCard
                 label="Tests"
@@ -154,12 +157,15 @@ function funnelPct(value: number, max: number): number {
                   ? `${latest.tests_passing} passing, ${latest.tests_failing ?? 0} failing`
                   : undefined}
                 trend={getTrend(latest.test_count, prev?.test_count)}
+                sparkline={extractSparkline(history, 'test_count')}
               />
               <StatCard
                 label="Coverage"
                 value={formatPct(latest.test_coverage_pct)}
                 subtitle="Test coverage"
                 trend={getTrend(latest.test_coverage_pct, prev?.test_coverage_pct)}
+                sparkline={extractSparkline(history, 'test_coverage_pct')}
+                tooltip="Percentage of code covered by automated tests"
               />
               <StatCard
                 label="Vulnerabilities"
@@ -177,24 +183,29 @@ function funnelPct(value: number, max: number): number {
                 value={formatDuration(latest.build_time_ms)}
                 subtitle="Production build"
                 trend={invertTrend(getTrend(latest.build_time_ms, prev?.build_time_ms))}
+                sparkline={extractSparkline(history, 'build_time_ms')}
               />
               <StatCard
                 label="Bundle Size"
                 value={latest.bundle_size_kb !== null ? `${latest.bundle_size_kb}KB` : '--'}
                 subtitle="Client bundle"
                 trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
+                sparkline={extractSparkline(history, 'bundle_size_kb')}
+                tooltip="Client-side JavaScript bundle size"
               />
               <StatCard
                 label="Lint Errors"
                 value={formatNumber(latest.lint_errors)}
                 subtitle={latest.lint_warnings !== null ? `${latest.lint_warnings} warnings` : undefined}
                 trend={invertTrend(getTrend(latest.lint_errors, prev?.lint_errors))}
+                sparkline={extractSparkline(history, 'lint_errors')}
               />
               <StatCard
                 label="TODOs / FIXMEs"
                 value={formatNumber(latest.todo_fixme_count)}
                 subtitle="In codebase"
                 trend={invertTrend(getTrend(latest.todo_fixme_count, prev?.todo_fixme_count))}
+                sparkline={extractSparkline(history, 'todo_fixme_count')}
               />
             </div>
 
@@ -206,6 +217,7 @@ function funnelPct(value: number, max: number): number {
                   ? `+${formatNumber(latest.insertions_30d)} / -${formatNumber(latest.deletions_30d)}`
                   : '--'}
                 subtitle="Last 30 days"
+                tooltip="Lines added and removed in the last 30 days"
               />
               <StatCard
                 label="Last Snapshot"
@@ -276,19 +288,19 @@ function funnelPct(value: number, max: number): number {
                   label="DAU (est.)"
                   value={formatNumber(usage.dauEstimate)}
                   subtitle="Last 24 hours"
-                  title="Daily Active Users: unique users who generated a CV in the last 24 hours"
+                  tooltip="Daily Active Users: unique users with CV activity in the last 24 hours"
                 />
                 <StatCard
                   label="WAU (est.)"
                   value={formatNumber(usage.wauEstimate)}
                   subtitle="Last 7 days"
-                  title="Weekly Active Users: unique users who generated a CV in the last 7 days"
+                  tooltip="Weekly Active Users: unique users with CV activity in the last 7 days"
                 />
                 <StatCard
                   label="MAU (est.)"
                   value={formatNumber(usage.mauEstimate)}
                   subtitle="Last 30 days"
-                  title="Monthly Active Users: unique users who generated a CV in the last 30 days"
+                  tooltip="Monthly Active Users: unique users with CV activity in the last 30 days"
                 />
               </div>
               <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
@@ -299,6 +311,7 @@ function funnelPct(value: number, max: number): number {
                   value={errorRate !== null ? formatPct(errorRate) : '--'}
                   subtitle={`${usage.failedOutputs} failed of ${usage.totalOutputAttempts} attempts`}
                   trend={errorRate !== null && errorRate > 5 ? 'down' : 'flat'}
+                  tooltip="Percentage of pipeline runs that failed"
                 />
 
                 {/* Subscription breakdown inline */}

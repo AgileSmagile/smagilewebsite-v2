@@ -1,0 +1,56 @@
+---
+interface Props {
+  data: number[];
+  colour?: string;
+}
+
+const { data, colour = '#75bcbe' } = Astro.props;
+
+// Don't render if fewer than 2 points or all values identical
+const valid = data.length >= 2 && !data.every((v) => v === data[0]);
+
+const width = 64;
+const height = 20;
+const padding = 2;
+
+let points = '';
+let lastX = 0;
+let lastY = 0;
+
+if (valid) {
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min;
+  const step = (width - padding * 2) / (data.length - 1);
+
+  const coords = data.map((v, i) => {
+    const x = padding + i * step;
+    const y = padding + (1 - (v - min) / range) * (height - padding * 2);
+    return { x, y };
+  });
+
+  points = coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  lastX = coords[coords.length - 1].x;
+  lastY = coords[coords.length - 1].y;
+}
+---
+
+{valid && (
+  <svg
+    width={width}
+    height={height}
+    viewBox={`0 0 ${width} ${height}`}
+    class="inline-block shrink-0"
+    aria-hidden="true"
+  >
+    <polyline
+      fill="none"
+      stroke={colour}
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      points={points}
+    />
+    <circle cx={lastX} cy={lastY} r="2" fill={colour} />
+  </svg>
+)}
