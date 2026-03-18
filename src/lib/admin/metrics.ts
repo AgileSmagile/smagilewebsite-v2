@@ -403,7 +403,7 @@ export async function fetchPipelineMetrics(): Promise<PipelineMetrics | null> {
         .not('pipeline_duration_ms', 'is', null),
       sb
         .from('cv_variants')
-        .select('id, document_id, pipeline_started_at, pipeline_completed_at, pipeline_duration_ms, pipeline_status, created_at, config')
+        .select('id, document_id, pipeline_started_at, pipeline_completed_at, pipeline_duration_ms, pipeline_status, created_at')
         .not('pipeline_duration_ms', 'is', null),
     ]);
 
