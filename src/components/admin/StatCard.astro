@@ -44,7 +44,7 @@ const trendIcons: Record<string, string> = {
         <path stroke-linecap="round" stroke-linejoin="round" d={trendIcons[trend]} />
       </svg>
     )}
-    {sparkline && sparkline.length >= 2 && (
+    {sparkline && sparkline.length > 0 && (
       <div class="ml-auto self-center">
         <Sparkline data={sparkline} />
       </div>
