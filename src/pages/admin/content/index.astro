@@ -2,45 +2,38 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
+import { getCollection } from 'astro:content';
 
 export const prerender = false;
 
-const contentItems = {
-  linkedin: [
-    { title: "Why your Scrum Master isn't a project manager", status: 'draft', date: '17 Mar' },
-    { title: 'Kanban metrics that actually matter', status: 'scheduled', date: '19 Mar' },
-    { title: 'The smagile approach to team coaching', status: 'idea', date: null },
-  ],
-  blog: [
-    { title: 'Lean Coffee: what it is and how to run one', status: 'published', date: '8 Mar' },
-    { title: 'Flow metrics for non-technical leaders', status: 'draft', date: '21 Mar' },
-  ],
-  youtube: [
-    { title: 'Introduction to ProKanban', status: 'script', date: '28 Mar' },
-  ],
-};
+// Load real blog content
+const allPosts = await getCollection('blog');
+const publishedPosts = allPosts.filter((p) => !p.data.draft);
+const draftPosts = allPosts.filter((p) => p.data.draft);
 
-const channelLabels: Record<string, string> = {
-  linkedin: 'LinkedIn',
-  blog: 'Blog',
-  youtube: 'YouTube',
-};
+// Current month stats
+const now = new Date();
+const currentMonth = now.getMonth();
+const currentYear = now.getFullYear();
+const publishedThisMonth = publishedPosts.filter((p) => {
+  const d = p.data.pubDate;
+  return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+});
 
-const statusColours: Record<string, string> = {
-  published: 'bg-green-500/20 text-green-400',
-  scheduled: 'bg-blue-500/20 text-blue-400',
-  draft: 'bg-amber-500/20 text-amber-400',
-  idea: 'bg-grey-500/20 text-grey-400',
-  script: 'bg-purple-500/20 text-purple-400',
-};
+const monthLabel = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
-const statusLabels: Record<string, string> = {
-  published: 'Published',
-  scheduled: 'Scheduled',
-  draft: 'Draft',
-  idea: 'Idea',
-  script: 'Script',
-};
+// Sort posts: drafts first, then by date descending
+const sortedPosts = [...allPosts].sort((a, b) => {
+  if (a.data.draft && !b.data.draft) return -1;
+  if (!a.data.draft && b.data.draft) return 1;
+  return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
+});
+
+// Blog cadence: target is 2 per month (1 per fortnight)
+const monthStart = new Date(currentYear, currentMonth, 1);
+const monthEnd = new Date(currentYear, currentMonth + 1, 0);
+const blogPublishedThisMonth = publishedThisMonth.length;
+const blogTarget = 2;
 ---
 
 <AdminLayout title="Content Pipeline">
@@ -56,76 +49,122 @@ const statusLabels: Record<string, string> = {
 
   <!-- KPI row -->
   <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
-    <StatCard label="In Progress" value="5" subtitle="Across all channels" />
-    <StatCard label="Scheduled" value="3" subtitle="Queued for publishing" />
-    <StatCard label="Published This Month" value="8" subtitle="March 2026" />
-    <StatCard label="Total Views" value="2.4k" subtitle="All channels combined" />
+    <StatCard label="In Progress" value={draftPosts.length} subtitle="Draft blog posts" />
+    <StatCard label="Scheduled" value={0} subtitle="No scheduling system yet" />
+    <StatCard label="Published This Month" value={publishedThisMonth.length} subtitle={monthLabel} />
+    <StatCard label="Total Published" value={publishedPosts.length} subtitle="All time, all channels" />
   </div>
 
-  <!-- Content queue -->
+  <!-- Content by channel -->
   <div class="mb-8">
-    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Content Queue</h2>
+    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Content by Channel</h2>
 
     <div class="grid gap-4">
-      {Object.entries(contentItems).map(([channel, items]) => (
-        <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold text-white">{channelLabels[channel]}</h3>
-            <span class="text-xs text-grey-500">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
-          </div>
+      <!-- Blog -->
+      <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-white">Blog</h3>
+          <span class="text-xs text-grey-500">{allPosts.length} {allPosts.length === 1 ? 'post' : 'posts'}</span>
+        </div>
 
+        {allPosts.length === 0 ? (
+          <p class="text-sm text-grey-500 italic">No blog posts yet.</p>
+        ) : (
           <div class="divide-y divide-grey-700">
-            {items.map((item) => (
+            {sortedPosts.map((post) => (
               <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                 <div class="flex items-center gap-3 min-w-0">
-                  <span class="text-sm text-white truncate">{item.title}</span>
+                  <a
+                    href={post.data.draft ? undefined : `/resources/blog/${post.id}/`}
+                    class:list={[
+                      'text-sm truncate',
+                      post.data.draft
+                        ? 'text-warm-300'
+                        : 'text-white hover:text-secondary transition-colors',
+                    ]}
+                  >
+                    {post.data.title}
+                  </a>
                 </div>
                 <div class="flex items-center gap-3 shrink-0 ml-4">
-                  <span class:list={['inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', statusColours[item.status]]}>
-                    {statusLabels[item.status]}
+                  <span class:list={[
+                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                    post.data.draft
+                      ? 'bg-amber-500/20 text-amber-400'
+                      : 'bg-green-500/20 text-green-400',
+                  ]}>
+                    {post.data.draft ? 'Draft' : 'Published'}
                   </span>
-                  {item.date ? (
-                    <span class="text-xs text-grey-500 w-16 text-right">
-                      {item.status === 'published' ? '' : 'Due '}{item.date}
-                    </span>
-                  ) : (
-                    <span class="text-xs text-grey-500 w-16 text-right">No date</span>
-                  )}
+                  <span class="text-xs text-grey-500 w-20 text-right">
+                    {post.data.pubDate.toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      ))}
-    </div>
-  </div>
+        )}
+      </div>
 
-  <!-- Publishing cadence -->
-  <div class="mb-8">
-    <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
-      <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Publishing Cadence</h2>
+      <!-- LinkedIn -->
+      <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-white">LinkedIn</h3>
+          <span class="text-xs text-grey-500">0 posts</span>
+        </div>
 
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-white">LinkedIn</span>
-          <span class="text-sm text-warm-300">2 posts/week</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-white">Blog</span>
-          <span class="text-sm text-warm-300">1 article/fortnight</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-white">YouTube</span>
-          <span class="text-sm text-warm-300">1 video/month</span>
+        <div class="text-center py-6">
+          <p class="text-sm text-grey-500">No LinkedIn posts tracked yet.</p>
+          <p class="mt-2 text-xs text-grey-600">Target: 2 posts per week</p>
         </div>
       </div>
 
-      <p class="mt-4 text-xs text-grey-500">Cadence targets. Actual publishing tracked above.</p>
+      <!-- YouTube -->
+      <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-white">YouTube</h3>
+          <span class="text-xs text-grey-500">0 videos</span>
+        </div>
+
+        <div class="text-center py-6">
+          <p class="text-sm text-grey-500">No YouTube content tracked yet.</p>
+          <p class="mt-2 text-xs text-grey-600">Target: 1 video per month</p>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Bottom note -->
-  <p class="text-xs text-grey-500 text-center">
-    Live data integration coming soon. This view shows placeholder data.
-  </p>
+  <!-- Publishing cadence targets -->
+  <div class="mb-8">
+    <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
+      <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Publishing Cadence Targets</h2>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-white">LinkedIn</span>
+          <div class="text-right">
+            <span class="text-sm text-grey-500">0 this week</span>
+            <span class="text-xs text-grey-600 ml-2">/ target 2 per week</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-white">Blog</span>
+          <div class="text-right">
+            <span class="text-sm text-grey-500">{blogPublishedThisMonth} this month</span>
+            <span class="text-xs text-grey-600 ml-2">/ target {blogTarget} per month</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-white">YouTube</span>
+          <div class="text-right">
+            <span class="text-sm text-grey-500">0 this month</span>
+            <span class="text-xs text-grey-600 ml-2">/ target 1 per month</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </AdminLayout>
