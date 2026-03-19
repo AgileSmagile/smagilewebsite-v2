@@ -176,3 +176,26 @@ export async function getEmergencyOpportunitySummary(): Promise<OpportunitySumma
     highMatch: data.filter((d) => (d.match_score || 0) >= 60).length,
   };
 }
+
+/**
+ * Fetch active outside IR35 opportunities for the partner network view.
+ * Excludes aged opportunities, sorted by date posted descending.
+ */
+export async function getPartnerOpportunities(): Promise<JobOpportunity[]> {
+  const sb = getSupabaseAdmin();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('job_opportunities')
+    .select('*')
+    .neq('status', 'aged')
+    .eq('ir35_status', 'outside')
+    .order('date_posted', { ascending: false, nullsFirst: false });
+
+  if (error) {
+    console.error('[Opportunities] Partner fetch error:', error.message);
+    return [];
+  }
+
+  return (data || []) as JobOpportunity[];
+}
