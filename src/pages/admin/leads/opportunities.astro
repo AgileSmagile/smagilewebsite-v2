@@ -137,7 +137,7 @@ const filters = [
                   </span>
                 </td>
                 <td class="py-3 text-grey-500 hidden md:table-cell">{formatDate(opp.date_posted)}</td>
-                <td class="py-3">
+                <td class="py-3 flex items-center gap-2">
                   <a
                     href={opp.url}
                     target="_blank"
@@ -146,6 +146,39 @@ const filters = [
                   >
                     View
                   </a>
+                  {opp.status === 'applied' ? (
+                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-secondary/20 text-secondary">Applied</span>
+                  ) : (
+                    <>
+                      {opp.status === 'new' && (
+                        <button
+                          data-opp-id={opp.id}
+                          data-action="seen"
+                          class="opp-status-btn px-3 py-1 text-xs font-medium text-warm-300 bg-grey-700 rounded border border-grey-600 hover:bg-grey-600 hover:text-white transition-colors"
+                        >
+                          Mark Seen
+                        </button>
+                      )}
+                      <button
+                        data-opp-id={opp.id}
+                        data-action="applied"
+                        class="opp-status-btn px-3 py-1 text-xs font-medium text-grey-900 bg-secondary rounded border border-secondary hover:bg-secondary/80 transition-colors"
+                      >
+                        Applied
+                      </button>
+                    </>
+                  )}
+                  {opp.businessmap_card_id && (
+                    <a
+                      href={`https://smagile.kanbanize.com/ctrl_board/5/cards/${opp.businessmap_card_id}/details`}
+                      target="_blank"
+                      rel="noopener"
+                      class="px-2 py-0.5 text-xs font-medium rounded bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors"
+                      title="View on Businessmap"
+                    >
+                      #{opp.businessmap_card_id}
+                    </a>
+                  )}
                 </td>
               </tr>
             ))}
@@ -184,3 +217,73 @@ const filters = [
     Data sourced from Reed.co.uk. Refreshed twice daily. Opportunities age off after 8 days.
   </p>
 </AdminLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.opp-status-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const oppId = btn.dataset.oppId;
+      const action = btn.dataset.action;
+      if (!oppId || !action) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      try {
+        const res = await fetch(`/admin/api/opportunities/${oppId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: action }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        // Find the parent row and update it
+        const row = btn.closest('tr');
+        if (!row) return;
+
+        if (action === 'applied') {
+          row.classList.add('opacity-50');
+          // Replace all buttons in the actions cell with an Applied badge
+          const cell = btn.closest('td');
+          if (cell) {
+            // Remove all status buttons
+            cell.querySelectorAll('.opp-status-btn').forEach((b) => b.remove());
+            // Insert Applied badge
+            const badge = document.createElement('span');
+            badge.className = 'px-2 py-0.5 text-xs font-medium rounded-full bg-secondary/20 text-secondary';
+            badge.textContent = 'Applied';
+            cell.appendChild(badge);
+
+            // Add Businessmap card link if we got a card_id
+            if (data.businessmap_card_id) {
+              const link = document.createElement('a');
+              link.href = `https://smagile.kanbanize.com/ctrl_board/5/cards/${data.businessmap_card_id}/details`;
+              link.target = '_blank';
+              link.rel = 'noopener';
+              link.className = 'px-2 py-0.5 text-xs font-medium rounded bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors';
+              link.title = 'View on Businessmap';
+              link.textContent = `#${data.businessmap_card_id}`;
+              cell.appendChild(link);
+            }
+          }
+        } else if (action === 'seen') {
+          // Remove the "new" blue dot indicator
+          const dot = row.querySelector('.bg-blue-400');
+          if (dot) dot.remove();
+          // Remove the Mark Seen button
+          btn.remove();
+        }
+      } catch (err) {
+        console.error('Status update failed:', err);
+        btn.disabled = false;
+        btn.textContent = action === 'applied' ? 'Applied' : 'Mark Seen';
+        alert(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    });
+  });
+</script>

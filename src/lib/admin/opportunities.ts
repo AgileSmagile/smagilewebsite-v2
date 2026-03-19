@@ -17,6 +17,7 @@ export interface JobOpportunity {
   status: string;
   match_score: number | null;
   match_reasons: string[] | null;
+  businessmap_card_id: number | null;
   first_seen_at: string;
 }
 
