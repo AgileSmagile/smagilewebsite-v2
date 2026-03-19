@@ -1,0 +1,329 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
+import StatCard from '../../../components/admin/StatCard.astro';
+import { getOutreachOpportunities, getOutreachSummary } from '../../../lib/admin/outreach';
+
+export const prerender = false;
+
+const statusFilter = Astro.url.searchParams.get('status') || 'all';
+const triggerFilter = Astro.url.searchParams.get('trigger') || 'all';
+
+const opportunities = await getOutreachOpportunities(statusFilter, triggerFilter);
+const summary = await getOutreachSummary();
+
+function formatRate(min: number | null, max: number | null): string {
+  if (!min && !max) return 'Not stated';
+  if (min && max && min !== max) return `£${min}-£${max}/day`;
+  return `£${min || max}/day`;
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function triggerLabel(type: string): string {
+  switch (type) {
+    case 'new_role': return 'New Role';
+    case 'stale_role': return 'Stale Role';
+    case 'closed_role': return 'Closed Role';
+    default: return type;
+  }
+}
+
+function triggerBadgeClasses(type: string): string {
+  switch (type) {
+    case 'new_role': return 'bg-secondary/20 text-secondary border-secondary/30';
+    case 'stale_role': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+    case 'closed_role': return 'bg-grey-700/30 text-grey-400 border-grey-600';
+    default: return 'bg-grey-700/30 text-grey-400 border-grey-600';
+  }
+}
+
+function targetTypeLabel(type: string): string {
+  return type === 'end_client' ? 'End Client' : 'Agency';
+}
+
+/** Build a URL preserving current filters but overriding one param */
+function filterUrl(overrides: Record<string, string>): string {
+  const params = new URLSearchParams();
+  const current: Record<string, string> = {
+    status: statusFilter,
+    trigger: triggerFilter,
+  };
+  const merged = { ...current, ...overrides };
+  for (const [k, v] of Object.entries(merged)) {
+    if (k === 'status' && v === 'all') continue;
+    if (k === 'trigger' && v === 'all') continue;
+    params.set(k, v);
+  }
+  const qs = params.toString();
+  return `/admin/leads/outreach${qs ? '?' + qs : ''}`;
+}
+
+const statusOptions = [
+  { value: 'all', label: 'All', count: summary.total },
+  { value: 'new', label: 'New', count: summary.new },
+  { value: 'sent', label: 'Sent', count: summary.sent },
+  { value: 'skipped', label: 'Skipped', count: summary.skipped },
+];
+
+const triggerOptions = [
+  { value: 'all', label: 'All Triggers' },
+  { value: 'new_role', label: 'New Role', count: summary.byTrigger.new_role },
+  { value: 'stale_role', label: 'Stale Role', count: summary.byTrigger.stale_role },
+  { value: 'closed_role', label: 'Closed Role', count: summary.byTrigger.closed_role },
+];
+---
+
+<AdminLayout title="Outreach Opportunities">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Leads', href: '/admin/leads/' },
+    { label: 'Outreach' },
+  ]} />
+
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white font-heading">Outreach Opportunities</h1>
+        <p class="mt-1 text-sm text-warm-300">Job postings that signal outreach potential</p>
+      </div>
+      <a href="/admin/leads/" class="text-sm text-secondary hover:text-white transition-colors">
+        &larr; Back to Leads
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid gap-4 grid-cols-2 lg:grid-cols-6 mb-8">
+    <StatCard label="New" value={String(summary.new)} subtitle="Unactioned" />
+    <StatCard label="Sent" value={String(summary.sent)} subtitle="Messages sent" />
+    <StatCard label="Skipped" value={String(summary.skipped)} subtitle="Dismissed" />
+    <StatCard label="New Roles" value={String(summary.byTrigger.new_role)} subtitle="Trigger type" />
+    <StatCard label="Stale Roles" value={String(summary.byTrigger.stale_role)} subtitle="Trigger type" />
+    <StatCard label="Closed Roles" value={String(summary.byTrigger.closed_role)} subtitle="Trigger type" />
+  </div>
+
+  <!-- Filter bar -->
+  <div class="bg-grey-800 rounded-xl border border-grey-700 p-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Status filters -->
+      <div class="flex gap-1">
+        {statusOptions.map((f) => (
+          <a
+            href={filterUrl({ status: f.value })}
+            class:list={[
+              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+              statusFilter === f.value
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+            ]}
+          >
+            {f.label} <span class="opacity-50">({f.count})</span>
+          </a>
+        ))}
+      </div>
+
+      <span class="text-grey-600">|</span>
+
+      <!-- Trigger type filters -->
+      <div class="flex gap-1">
+        {triggerOptions.map((t) => (
+          <a
+            href={filterUrl({ trigger: t.value })}
+            class:list={[
+              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+              triggerFilter === t.value
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+            ]}
+          >
+            {t.label} {'count' in t && <span class="opacity-50">({t.count})</span>}
+          </a>
+        ))}
+      </div>
+
+      <!-- Result count + clear -->
+      <span class="ml-auto text-xs text-grey-500">
+        {opportunities.length} results
+      </span>
+      {(statusFilter !== 'all' || triggerFilter !== 'all') && (
+        <a href="/admin/leads/outreach" class="text-xs text-secondary hover:text-white transition-colors">
+          Clear all
+        </a>
+      )}
+    </div>
+  </div>
+
+  <!-- Outreach cards -->
+  {opportunities.length === 0 ? (
+    <div class="bg-grey-800 rounded-xl border border-grey-700 p-12 text-center">
+      <svg class="w-12 h-12 mx-auto mb-4 text-grey-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38a.75.75 0 01-1.006-.267 11.247 11.247 0 01-1.59-4.227m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+      </svg>
+      <p class="text-sm text-grey-500 mb-1">No outreach opportunities detected yet.</p>
+      <p class="text-xs text-grey-600">Run the detection script to scan for signals.</p>
+    </div>
+  ) : (
+    <div class="space-y-4">
+      {opportunities.map((opp) => (
+        <div
+          class:list={[
+            'outreach-card bg-grey-800 rounded-xl border border-grey-700 p-6 transition-opacity',
+            opp.status === 'skipped' && 'opacity-50',
+          ]}
+          data-outreach-id={opp.id}
+        >
+          <!-- Header row: trigger badge + target + date -->
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class:list={[
+                'inline-block px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                triggerBadgeClasses(opp.trigger_type),
+              ]}>
+                {triggerLabel(opp.trigger_type)}
+              </span>
+              <div>
+                <span class="text-white font-medium">{opp.target_name}</span>
+                <span class="ml-2 text-xs text-grey-500">({targetTypeLabel(opp.target_type)})</span>
+              </div>
+            </div>
+            <span class="text-xs text-grey-500 shrink-0">Detected {formatDate(opp.created_at)}</span>
+          </div>
+
+          <!-- Job context -->
+          {opp.job_title && (
+            <div class="mb-4 p-3 bg-grey-900/50 rounded-lg border border-grey-700/50">
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span class="text-warm-300 font-medium">{opp.job_title}</span>
+                <span class="text-grey-500">{formatRate(opp.job_day_rate_min, opp.job_day_rate_max)}</span>
+                {opp.job_location && <span class="text-grey-500">{opp.job_location}</span>}
+                {opp.job_url && (
+                  <a
+                    href={opp.job_url}
+                    target="_blank"
+                    rel="noopener"
+                    class="text-xs text-secondary hover:text-white transition-colors"
+                  >
+                    View listing &rarr;
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          <!-- Draft subject -->
+          <div class="mb-3">
+            <label class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-1">Subject</label>
+            <div class="px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 font-mono text-sm text-warm-300">
+              {opp.suggested_subject}
+            </div>
+          </div>
+
+          <!-- Draft body -->
+          <div class="mb-4">
+            <label class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-1">Draft message</label>
+            <div class="px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 font-mono text-sm text-warm-300 whitespace-pre-wrap max-h-28 overflow-y-auto leading-relaxed">
+              {opp.suggested_body}
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="flex items-center gap-3">
+            {opp.status === 'skipped' ? (
+              <span class="px-3 py-1.5 text-xs font-medium rounded-lg bg-grey-700/30 text-grey-500">Skipped</span>
+            ) : opp.status === 'sent' ? (
+              <span class="px-3 py-1.5 text-xs font-medium rounded-lg bg-secondary/20 text-secondary">Sent</span>
+            ) : (
+              <>
+                <button
+                  data-outreach-id={opp.id}
+                  data-action="skip"
+                  class="outreach-action-btn px-3 py-1.5 text-xs font-medium text-warm-300 bg-grey-700 rounded-lg border border-grey-600 hover:bg-grey-600 hover:text-white transition-colors"
+                >
+                  Skip
+                </button>
+                <span class="group relative">
+                  <button
+                    disabled
+                    class="px-3 py-1.5 text-xs font-medium text-grey-600 bg-grey-700/50 rounded-lg border border-grey-700 cursor-not-allowed"
+                  >
+                    Send
+                  </button>
+                  <span class="pointer-events-none absolute z-10 bottom-full mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-grey-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                    Phase 2
+                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-grey-900"></span>
+                  </span>
+                </span>
+              </>
+            )}
+            {opp.job_url && (
+              <a
+                href={opp.job_url}
+                target="_blank"
+                rel="noopener"
+                class="px-3 py-1.5 text-xs font-medium text-warm-300 bg-grey-700 rounded-lg border border-grey-600 hover:bg-grey-600 hover:text-white transition-colors"
+              >
+                View Job
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <p class="text-xs text-grey-500 text-center mt-6">
+    Outreach signals detected from job opportunity data. Phase 2 will add direct sending.
+  </p>
+</AdminLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.outreach-action-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const outreachId = btn.dataset.outreachId;
+      const action = btn.dataset.action;
+      if (!outreachId || action !== 'skip') return;
+
+      btn.disabled = true;
+      btn.textContent = 'Skipping...';
+
+      try {
+        const res = await fetch(`/admin/api/outreach/${outreachId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'skipped' }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        const card = btn.closest('.outreach-card');
+        if (!card) return;
+
+        card.classList.add('opacity-50');
+
+        // Replace action buttons with a Skipped badge
+        const actionsContainer = btn.parentElement;
+        if (actionsContainer) {
+          // Remove skip button and send button
+          actionsContainer.querySelectorAll('.outreach-action-btn, .group').forEach((el) => el.remove());
+          // Insert Skipped badge at the start
+          const badge = document.createElement('span');
+          badge.className = 'px-3 py-1.5 text-xs font-medium rounded-lg bg-grey-700/30 text-grey-500';
+          badge.textContent = 'Skipped';
+          actionsContainer.insertBefore(badge, actionsContainer.firstChild);
+        }
+      } catch (err) {
+        console.error('Outreach status update failed:', err);
+        btn.disabled = false;
+        btn.textContent = 'Skip';
+        alert(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    });
+  });
+</script>
