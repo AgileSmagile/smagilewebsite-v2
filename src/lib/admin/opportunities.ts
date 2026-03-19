@@ -78,3 +78,56 @@ export async function getOpportunitySummary(): Promise<OpportunitySummary> {
     highMatch: data.filter((d) => (d.match_score || 0) >= 60).length,
   };
 }
+
+/**
+ * Fetch emergency job opportunities (inside IR35 and unknown), excludes aged.
+ * Sorted by match score descending.
+ */
+export async function getEmergencyOpportunities(statusFilter?: string): Promise<JobOpportunity[]> {
+  const sb = getSupabaseAdmin();
+  if (!sb) return [];
+
+  let query = sb
+    .from('job_opportunities')
+    .select('*')
+    .neq('status', 'aged')
+    .in('ir35_status', ['inside', 'unknown'])
+    .order('match_score', { ascending: false, nullsFirst: false });
+
+  if (statusFilter && statusFilter !== 'all') {
+    query = query.eq('status', statusFilter);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('[Opportunities] Emergency fetch error:', error.message);
+    return [];
+  }
+
+  return (data || []) as JobOpportunity[];
+}
+
+/**
+ * Get summary counts for the emergency opportunities dashboard (inside IR35 and unknown).
+ */
+export async function getEmergencyOpportunitySummary(): Promise<OpportunitySummary> {
+  const sb = getSupabaseAdmin();
+  if (!sb) return { total: 0, new: 0, seen: 0, applied: 0, highMatch: 0 };
+
+  const { data, error } = await sb
+    .from('job_opportunities')
+    .select('status, match_score, ir35_status')
+    .neq('status', 'aged')
+    .in('ir35_status', ['inside', 'unknown']);
+
+  if (error || !data) return { total: 0, new: 0, seen: 0, applied: 0, highMatch: 0 };
+
+  return {
+    total: data.length,
+    new: data.filter((d) => d.status === 'new').length,
+    seen: data.filter((d) => d.status === 'seen').length,
+    applied: data.filter((d) => d.status === 'applied').length,
+    highMatch: data.filter((d) => (d.match_score || 0) >= 60).length,
+  };
+}
