@@ -2,13 +2,28 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
-import { getOpportunities, getOpportunitySummary } from '../../../lib/admin/opportunities';
+import { getOpportunities, getOpportunitySummary, getSourceCounts } from '../../../lib/admin/opportunities';
 
 export const prerender = false;
 
+// Read all filter params from URL
 const statusFilter = Astro.url.searchParams.get('status') || 'all';
-const opportunities = await getOpportunities(statusFilter);
+const sourceFilter = Astro.url.searchParams.get('source') || 'all';
+const minScore = parseInt(Astro.url.searchParams.get('min_score') || '0', 10) || 0;
+const minRate = parseInt(Astro.url.searchParams.get('min_rate') || '0', 10) || 0;
+const sortBy = Astro.url.searchParams.get('sort') || 'score';
+const hideSeen = Astro.url.searchParams.get('hide_seen') === '1';
+
+const opportunities = await getOpportunities({
+  status: statusFilter,
+  source: sourceFilter,
+  minScore,
+  minRate,
+  sort: sortBy,
+  hideSeen,
+});
 const summary = await getOpportunitySummary();
+const sourceCounts = await getSourceCounts();
 
 function formatRate(min: number | null, max: number | null): string {
   if (!min && !max) return 'Not stated';
@@ -35,11 +50,58 @@ function scoreBg(score: number | null): string {
   return 'bg-grey-700/30';
 }
 
-const filters = [
+/** Build a URL preserving current filters but overriding one param */
+function filterUrl(overrides: Record<string, string>): string {
+  const params = new URLSearchParams();
+  const current: Record<string, string> = {
+    status: statusFilter,
+    source: sourceFilter,
+    min_score: String(minScore),
+    min_rate: String(minRate),
+    sort: sortBy,
+    hide_seen: hideSeen ? '1' : '0',
+  };
+  const merged = { ...current, ...overrides };
+  for (const [k, v] of Object.entries(merged)) {
+    // Skip defaults to keep URL clean
+    if (k === 'status' && v === 'all') continue;
+    if (k === 'source' && v === 'all') continue;
+    if (k === 'min_score' && v === '0') continue;
+    if (k === 'min_rate' && v === '0') continue;
+    if (k === 'sort' && v === 'score') continue;
+    if (k === 'hide_seen' && v === '0') continue;
+    params.set(k, v);
+  }
+  const qs = params.toString();
+  return `/admin/leads/opportunities${qs ? '?' + qs : ''}`;
+}
+
+const statusOptions = [
   { value: 'all', label: 'All', count: summary.total },
   { value: 'new', label: 'New', count: summary.new },
   { value: 'seen', label: 'Seen', count: summary.seen },
   { value: 'applied', label: 'Applied', count: summary.applied },
+];
+
+const sourceOptions = [
+  { value: 'all', label: 'All sources', count: summary.total },
+  ...Object.entries(sourceCounts).map(([k, v]) => ({
+    value: k,
+    label: k.charAt(0).toUpperCase() + k.slice(1),
+    count: v,
+  })),
+];
+
+const scoreOptions = [
+  { value: '0', label: 'Any score' },
+  { value: '30', label: '30%+' },
+  { value: '60', label: '60%+ (high)' },
+];
+
+const sortOptions = [
+  { value: 'score', label: 'Match score' },
+  { value: 'date', label: 'Date posted' },
+  { value: 'rate', label: 'Day rate' },
 ];
 ---
 
@@ -75,27 +137,114 @@ const filters = [
     <StatCard label="Applied" value={String(summary.applied)} subtitle="In your pipeline" />
   </div>
 
-  <!-- Filters -->
-  <div class="flex gap-2 mb-6">
-    {filters.map((f) => (
+  <!-- Filter bar -->
+  <div class="bg-grey-800 rounded-xl border border-grey-700 p-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Status -->
+      <div class="flex gap-1">
+        {statusOptions.map((f) => (
+          <a
+            href={filterUrl({ status: f.value })}
+            class:list={[
+              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+              statusFilter === f.value
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+            ]}
+          >
+            {f.label} <span class="opacity-50">({f.count})</span>
+          </a>
+        ))}
+      </div>
+
+      <span class="text-grey-600">|</span>
+
+      <!-- Source -->
+      <div class="flex gap-1">
+        {sourceOptions.map((s) => (
+          <a
+            href={filterUrl({ source: s.value })}
+            class:list={[
+              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+              sourceFilter === s.value
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+            ]}
+          >
+            {s.label} <span class="opacity-50">({s.count})</span>
+          </a>
+        ))}
+      </div>
+
+      <span class="text-grey-600">|</span>
+
+      <!-- Min score -->
+      <div class="flex gap-1">
+        {scoreOptions.map((s) => (
+          <a
+            href={filterUrl({ min_score: s.value })}
+            class:list={[
+              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+              String(minScore) === s.value
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+            ]}
+          >
+            {s.label}
+          </a>
+        ))}
+      </div>
+
+      <span class="text-grey-600">|</span>
+
+      <!-- Sort -->
+      <div class="flex gap-1">
+        {sortOptions.map((s) => (
+          <a
+            href={filterUrl({ sort: s.value })}
+            class:list={[
+              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+              sortBy === s.value
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+            ]}
+          >
+            {s.label}
+          </a>
+        ))}
+      </div>
+
+      <span class="text-grey-600">|</span>
+
+      <!-- Hide seen toggle -->
       <a
-        href={`/admin/leads/opportunities${f.value === 'all' ? '' : `?status=${f.value}`}`}
+        href={filterUrl({ hide_seen: hideSeen ? '0' : '1' })}
         class:list={[
-          'px-3 py-1.5 text-sm rounded-lg border transition-colors',
-          statusFilter === f.value
+          'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+          hideSeen
             ? 'bg-secondary/20 border-secondary text-secondary'
-            : 'bg-grey-800 border-grey-700 text-warm-300 hover:border-grey-600',
+            : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
         ]}
       >
-        {f.label} <span class="text-xs opacity-60">({f.count})</span>
+        Hide seen
       </a>
-    ))}
+
+      <!-- Result count + clear -->
+      <span class="ml-auto text-xs text-grey-500">
+        {opportunities.length} results
+      </span>
+      {(statusFilter !== 'all' || sourceFilter !== 'all' || minScore > 0 || minRate > 0 || sortBy !== 'score' || hideSeen) && (
+        <a href="/admin/leads/opportunities" class="text-xs text-secondary hover:text-white transition-colors">
+          Clear all
+        </a>
+      )}
+    </div>
   </div>
 
   <!-- Opportunities table -->
   <div class="bg-grey-800 rounded-xl border border-grey-700 p-6">
     {opportunities.length === 0 ? (
-      <p class="text-sm text-grey-500 text-center py-8">No opportunities found for this filter.</p>
+      <p class="text-sm text-grey-500 text-center py-8">No opportunities found for these filters.</p>
     ) : (
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left">
@@ -106,7 +255,7 @@ const filters = [
               <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden md:table-cell">Rate</th>
               <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden lg:table-cell">Agency</th>
               <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden lg:table-cell">Location</th>
-              <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden sm:table-cell">IR35</th>
+              <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden sm:table-cell">Source</th>
               <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden md:table-cell">Posted</th>
               <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider">Actions</th>
             </tr>
@@ -132,14 +281,9 @@ const filters = [
                 </td>
                 <td class="py-3 text-warm-300 hidden md:table-cell">{formatRate(opp.day_rate_min, opp.day_rate_max)}</td>
                 <td class="py-3 text-warm-300 hidden lg:table-cell">{opp.agency || '-'}</td>
-                <td class="py-3 text-warm-300 hidden lg:table-cell">{opp.location || '-'}</td>
+                <td class="py-3 text-warm-300 hidden lg:table-cell">{(opp.location || '-').length > 20 ? opp.location!.slice(0, 20) + '...' : opp.location || '-'}</td>
                 <td class="py-3 hidden sm:table-cell">
-                  <span class:list={[
-                    'inline-block px-2 py-0.5 rounded-full text-xs font-medium',
-                    opp.ir35_status === 'outside' ? 'bg-green-500/20 text-green-400' : 'bg-grey-700/30 text-grey-500',
-                  ]}>
-                    {opp.ir35_status}
-                  </span>
+                  <span class="text-xs text-grey-500">{opp.source}</span>
                 </td>
                 <td class="py-3 text-grey-500 hidden md:table-cell">{formatDate(opp.date_posted)}</td>
                 <td class="py-3 flex items-center gap-2">
@@ -193,33 +337,8 @@ const filters = [
     )}
   </div>
 
-  <!-- Match reasons tooltip area -->
-  {opportunities.filter(o => (o.match_score || 0) >= 60).length > 0 && (
-    <div class="mt-6 bg-grey-800 rounded-xl border border-grey-700 p-6">
-      <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Top Matches</h2>
-      <div class="space-y-3">
-        {opportunities.filter(o => (o.match_score || 0) >= 60).map((opp) => (
-          <div class="p-3 bg-grey-900/50 rounded-lg border border-grey-700/50">
-            <div class="flex items-center justify-between mb-1">
-              <a href={opp.url} target="_blank" rel="noopener" class="text-sm font-medium text-white hover:text-secondary">
-                {opp.title}
-              </a>
-              <span class="text-sm font-bold text-green-400">{opp.match_score}%</span>
-            </div>
-            <p class="text-xs text-grey-500">
-              {formatRate(opp.day_rate_min, opp.day_rate_max)} · {opp.agency || 'Agency not stated'} · {opp.location || 'Location not stated'}
-            </p>
-            {opp.match_reasons && (
-              <p class="text-xs text-warm-300 mt-1">{opp.match_reasons.join(' · ')}</p>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )}
-
   <p class="text-xs text-grey-500 text-center mt-6">
-    Data sourced from Reed.co.uk. Refreshed twice daily. Opportunities age off after 8 days.
+    Data sourced from Reed.co.uk and Adzuna. Refreshed twice daily. Opportunities age off after 8 days.
   </p>
 </AdminLayout>
 
@@ -246,25 +365,19 @@ const filters = [
         }
 
         const data = await res.json();
-
-        // Find the parent row and update it
         const row = btn.closest('tr');
         if (!row) return;
 
         if (action === 'applied') {
           row.classList.add('opacity-50');
-          // Replace all buttons in the actions cell with an Applied badge
           const cell = btn.closest('td');
           if (cell) {
-            // Remove all status buttons
             cell.querySelectorAll('.opp-status-btn').forEach((b) => b.remove());
-            // Insert Applied badge
             const badge = document.createElement('span');
             badge.className = 'px-2 py-0.5 text-xs font-medium rounded-full bg-secondary/20 text-secondary';
             badge.textContent = 'Applied';
             cell.appendChild(badge);
 
-            // Add Businessmap card link if we got a card_id
             if (data.businessmap_card_id) {
               const link = document.createElement('a');
               link.href = `https://smagile.kanbanize.com/ctrl_board/5/cards/${data.businessmap_card_id}/details`;
@@ -277,10 +390,8 @@ const filters = [
             }
           }
         } else if (action === 'seen') {
-          // Remove the "new" blue dot indicator
           const dot = row.querySelector('.bg-blue-400');
           if (dot) dot.remove();
-          // Remove the Mark Seen button
           btn.remove();
         }
       } catch (err) {

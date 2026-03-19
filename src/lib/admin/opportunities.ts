@@ -29,21 +29,50 @@ export interface OpportunitySummary {
   highMatch: number;
 }
 
+export interface OpportunityFilters {
+  status?: string;        // 'all' | 'new' | 'seen' | 'applied'
+  source?: string;        // 'all' | 'reed' | 'adzuna'
+  minScore?: number;      // minimum match score (0-100)
+  minRate?: number;       // minimum day rate
+  sort?: string;          // 'score' | 'date' | 'rate'
+  hideSeen?: boolean;     // hide seen items
+}
+
 /**
- * Fetch active job opportunities (excludes aged), sorted by match score descending.
+ * Fetch active job opportunities (excludes aged) with filtering.
  */
-export async function getOpportunities(statusFilter?: string): Promise<JobOpportunity[]> {
+export async function getOpportunities(filters: OpportunityFilters = {}): Promise<JobOpportunity[]> {
   const sb = getSupabaseAdmin();
   if (!sb) return [];
+
+  const sortField = filters.sort === 'date' ? 'date_posted'
+    : filters.sort === 'rate' ? 'day_rate_max'
+    : 'match_score';
 
   let query = sb
     .from('job_opportunities')
     .select('*')
     .neq('status', 'aged')
-    .order('match_score', { ascending: false, nullsFirst: false });
+    .order(sortField, { ascending: false, nullsFirst: false });
 
-  if (statusFilter && statusFilter !== 'all') {
-    query = query.eq('status', statusFilter);
+  if (filters.status && filters.status !== 'all') {
+    query = query.eq('status', filters.status);
+  }
+
+  if (filters.hideSeen) {
+    query = query.neq('status', 'seen');
+  }
+
+  if (filters.source && filters.source !== 'all') {
+    query = query.eq('source', filters.source);
+  }
+
+  if (filters.minScore && filters.minScore > 0) {
+    query = query.gte('match_score', filters.minScore);
+  }
+
+  if (filters.minRate && filters.minRate > 0) {
+    query = query.gte('day_rate_max', filters.minRate);
   }
 
   const { data, error } = await query;
@@ -54,6 +83,22 @@ export async function getOpportunities(statusFilter?: string): Promise<JobOpport
   }
 
   return (data || []) as JobOpportunity[];
+}
+
+/** Count by source for display. */
+export async function getSourceCounts(): Promise<Record<string, number>> {
+  const sb = getSupabaseAdmin();
+  if (!sb) return {};
+
+  const { data } = await sb
+    .from('job_opportunities')
+    .select('source')
+    .neq('status', 'aged');
+
+  if (!data) return {};
+  const counts: Record<string, number> = {};
+  data.forEach((d) => { counts[d.source] = (counts[d.source] || 0) + 1; });
+  return counts;
 }
 
 /**
