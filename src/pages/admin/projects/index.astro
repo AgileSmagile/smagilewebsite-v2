@@ -194,14 +194,6 @@ function funnelPct(value: number, max: number): number {
                 sparkline={extractSparkline(history, 'build_time_ms')}
               />
               <StatCard
-                label="Bundle Size"
-                value={latest.bundle_size_kb !== null ? `${latest.bundle_size_kb}KB` : '--'}
-                subtitle="Client bundle"
-                trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
-                sparkline={extractSparkline(history, 'bundle_size_kb')}
-                tooltip="Client-side JavaScript bundle size"
-              />
-              <StatCard
                 label="Lint Errors"
                 value={formatNumber(latest.lint_errors)}
                 subtitle={latest.lint_warnings !== null ? `${latest.lint_warnings} warnings` : undefined}
