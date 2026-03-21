@@ -31,3 +31,6 @@ Thumbs.db
 
 # FreeAgent OAuth tokens (sensitive, per-environment)
 .freeagent-tokens.json
+
+# Local data store (Scout insights, etc.)
+data/

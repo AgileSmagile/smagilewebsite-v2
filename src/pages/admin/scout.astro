@@ -1,0 +1,327 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../components/admin/Breadcrumb.astro';
+import { getInsights } from '../../lib/admin/scout';
+
+export const prerender = false;
+
+const insights = getInsights();
+---
+
+<AdminLayout title="Scout">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Scout' },
+  ]} />
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-white font-heading">Scout</h1>
+    <p class="mt-1 text-sm text-warm-300">Capture insights about potential leads as you browse</p>
+  </div>
+
+  <!-- Capture form -->
+  <div class="mb-8 bg-grey-800 rounded-xl border border-grey-700 p-6">
+    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">New Insight</h2>
+
+    <form id="scout-form" class="space-y-4">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="companyName" class="block text-sm font-medium text-warm-300 mb-1">
+            Company name <span class="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            id="companyName"
+            name="companyName"
+            required
+            placeholder="e.g. Barclays"
+            class="w-full px-3 py-2 bg-grey-900 border border-grey-700 rounded-lg text-white text-sm placeholder-grey-500 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+          />
+        </div>
+        <div>
+          <label for="sourceUrl" class="block text-sm font-medium text-warm-300 mb-1">
+            Source URL
+          </label>
+          <input
+            type="url"
+            id="sourceUrl"
+            name="sourceUrl"
+            placeholder="https://..."
+            class="w-full px-3 py-2 bg-grey-900 border border-grey-700 rounded-lg text-white text-sm placeholder-grey-500 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label for="selectedText" class="block text-sm font-medium text-warm-300 mb-1">
+          Key quote or selected text
+        </label>
+        <input
+          type="text"
+          id="selectedText"
+          name="selectedText"
+          placeholder="Paste a relevant snippet from the page"
+          class="w-full px-3 py-2 bg-grey-900 border border-grey-700 rounded-lg text-white text-sm placeholder-grey-500 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
+        />
+      </div>
+
+      <div>
+        <label for="notes" class="block text-sm font-medium text-warm-300 mb-1">
+          Notes
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          rows="3"
+          placeholder="Why does this matter? What caught your eye?"
+          class="w-full px-3 py-2 bg-grey-900 border border-grey-700 rounded-lg text-white text-sm placeholder-grey-500 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary resize-y"
+        ></textarea>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button
+          type="submit"
+          class="px-5 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
+        >
+          Save insight
+        </button>
+        <span id="form-status" class="text-sm hidden"></span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Recent insights list -->
+  <div class="bg-grey-800 rounded-xl border border-grey-700 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider">
+        Recent Insights
+        <span class="text-grey-500 ml-1" id="insights-count">({insights.length})</span>
+      </h2>
+    </div>
+
+    <div id="insights-list">
+      {insights.length === 0 ? (
+        <p class="text-sm text-grey-500 py-4 text-center" id="empty-state">
+          No insights captured yet. Use the form above to get started.
+        </p>
+      ) : (
+        <div class="space-y-3">
+          {insights.map((insight) => (
+            <div class="p-4 bg-grey-900/50 rounded-lg border border-grey-700/50 group" data-insight-id={insight.id}>
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm font-semibold text-white">{insight.companyName}</span>
+                    <span class="text-xs text-grey-500">
+                      {new Date(insight.timestamp).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  {insight.selectedText && (
+                    <p class="text-sm text-warm-300 italic mb-1 truncate" title={insight.selectedText}>
+                      "{insight.selectedText}"
+                    </p>
+                  )}
+                  {insight.notes && (
+                    <p class="text-sm text-warm-300">{insight.notes}</p>
+                  )}
+                  {insight.sourceUrl && (
+                    <a
+                      href={insight.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center gap-1 text-xs text-secondary hover:underline mt-1"
+                    >
+                      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                      </svg>
+                      Source
+                    </a>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  class="p-1.5 text-grey-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-grey-800"
+                  title="Delete insight"
+                  data-delete-id={insight.id}
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  const form = document.getElementById('scout-form') as HTMLFormElement;
+  const status = document.getElementById('form-status') as HTMLSpanElement;
+  const insightsList = document.getElementById('insights-list') as HTMLDivElement;
+  const insightsCount = document.getElementById('insights-count') as HTMLSpanElement;
+
+  function showStatus(message: string, isError: boolean) {
+    status.textContent = message;
+    status.className = `text-sm ${isError ? 'text-red-400' : 'text-green-400'}`;
+    status.classList.remove('hidden');
+    setTimeout(() => status.classList.add('hidden'), 3000);
+  }
+
+  function formatDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function updateCount(delta: number) {
+    const match = insightsCount.textContent?.match(/\d+/);
+    const current = match ? parseInt(match[0], 10) : 0;
+    insightsCount.textContent = `(${current + delta})`;
+  }
+
+  function createInsightCard(insight: { id: string; companyName: string; selectedText: string; notes: string; sourceUrl: string; timestamp: string }): HTMLDivElement {
+    const card = document.createElement('div');
+    card.className = 'p-4 bg-grey-900/50 rounded-lg border border-grey-700/50 group';
+    card.dataset.insightId = insight.id;
+
+    let quoteHtml = '';
+    if (insight.selectedText) {
+      quoteHtml = `<p class="text-sm text-warm-300 italic mb-1 truncate" title="${insight.selectedText.replace(/"/g, '&quot;')}">"${insight.selectedText}"</p>`;
+    }
+
+    let notesHtml = '';
+    if (insight.notes) {
+      notesHtml = `<p class="text-sm text-warm-300">${insight.notes}</p>`;
+    }
+
+    let sourceHtml = '';
+    if (insight.sourceUrl) {
+      sourceHtml = `<a href="${insight.sourceUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-secondary hover:underline mt-1"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>Source</a>`;
+    }
+
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-sm font-semibold text-white">${insight.companyName}</span>
+            <span class="text-xs text-grey-500">${formatDate(insight.timestamp)}</span>
+          </div>
+          ${quoteHtml}
+          ${notesHtml}
+          ${sourceHtml}
+        </div>
+        <button type="button" class="p-1.5 text-grey-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-grey-800" title="Delete insight" data-delete-id="${insight.id}">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+          </svg>
+        </button>
+      </div>`;
+
+    return card;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const companyName = (document.getElementById('companyName') as HTMLInputElement).value.trim();
+    const sourceUrl = (document.getElementById('sourceUrl') as HTMLInputElement).value.trim();
+    const selectedText = (document.getElementById('selectedText') as HTMLInputElement).value.trim();
+    const notes = (document.getElementById('notes') as HTMLTextAreaElement).value.trim();
+
+    if (!companyName) {
+      showStatus('Company name is required.', true);
+      return;
+    }
+
+    try {
+      const res = await fetch('/admin/api/scout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyName, sourceUrl, selectedText, notes }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        showStatus(err.error || 'Failed to save insight.', true);
+        return;
+      }
+
+      const insight = await res.json();
+
+      // Remove the empty state if present
+      const emptyState = document.getElementById('empty-state');
+      if (emptyState) {
+        emptyState.remove();
+        // Create the container div for insights
+        const container = document.createElement('div');
+        container.className = 'space-y-3';
+        container.id = 'insights-container';
+        insightsList.appendChild(container);
+      }
+
+      // Add the new card to the top
+      const container = document.getElementById('insights-container') || insightsList.querySelector('.space-y-3');
+      if (container) {
+        const card = createInsightCard(insight);
+        container.prepend(card);
+      }
+
+      updateCount(1);
+      showStatus('Insight saved.', false);
+      form.reset();
+
+      // Focus company name for the next entry
+      (document.getElementById('companyName') as HTMLInputElement).focus();
+    } catch {
+      showStatus('Network error. Could not save insight.', true);
+    }
+  });
+
+  // Delegate delete clicks
+  insightsList.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest('[data-delete-id]') as HTMLElement | null;
+    if (!btn) return;
+
+    const id = btn.dataset.deleteId;
+    if (!id || !confirm('Delete this insight?')) return;
+
+    try {
+      const res = await fetch('/admin/api/scout', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!res.ok) {
+        showStatus('Failed to delete insight.', true);
+        return;
+      }
+
+      const card = insightsList.querySelector(`[data-insight-id="${id}"]`);
+      if (card) card.remove();
+
+      updateCount(-1);
+
+      // Show empty state if no insights remain
+      const remaining = insightsList.querySelectorAll('[data-insight-id]');
+      if (remaining.length === 0) {
+        insightsList.innerHTML = '<p class="text-sm text-grey-500 py-4 text-center" id="empty-state">No insights captured yet. Use the form above to get started.</p>';
+      }
+    } catch {
+      showStatus('Network error. Could not delete insight.', true);
+    }
+  });
+</script>
