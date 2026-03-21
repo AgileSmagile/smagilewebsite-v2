@@ -38,6 +38,12 @@
 </div>
 
 <script>
+  declare global {
+    interface Window {
+      dataLayer: unknown[][];
+    }
+  }
+
   const banner = document.getElementById('cookie-consent');
   const essentialBtn = document.getElementById('cookie-accept-essential');
   const allBtn = document.getElementById('cookie-accept-all');
@@ -76,9 +82,9 @@
     document.head.appendChild(script);
 
     script.onload = () => {
-      (window as any).dataLayer = (window as any).dataLayer || [];
-      function gtag(...args: any[]) {
-        (window as any).dataLayer.push(args);
+      window.dataLayer = window.dataLayer || [];
+      function gtag(...args: unknown[]) {
+        window.dataLayer.push(args);
       }
       gtag('js', new Date());
       gtag('config', gaId, { anonymize_ip: true });

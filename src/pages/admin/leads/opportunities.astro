@@ -3,6 +3,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import { getOpportunities, getOpportunitySummary, getSourceCounts } from '../../../lib/admin/opportunities';
+import { formatRate, formatDate, scoreColour, scoreBg } from '../../../lib/admin/format';
+import { buildFilterUrl } from '../../../lib/admin/filter-url';
 
 export const prerender = false;
 
@@ -25,55 +27,18 @@ const opportunities = await getOpportunities({
 const summary = await getOpportunitySummary();
 const sourceCounts = await getSourceCounts();
 
-function formatRate(min: number | null, max: number | null): string {
-  if (!min && !max) return 'Not stated';
-  if (min && max && min !== max) return `£${min}-£${max}/day`;
-  return `£${min || max}/day`;
-}
+const filterDefaults: Record<string, string> = {
+  status: 'all', source: 'all', min_score: '0', min_rate: '0', sort: 'score', hide_seen: '0',
+};
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-}
+const currentParams: Record<string, string> = {
+  status: statusFilter, source: sourceFilter,
+  min_score: String(minScore), min_rate: String(minRate),
+  sort: sortBy, hide_seen: hideSeen ? '1' : '0',
+};
 
-function scoreColour(score: number | null): string {
-  if (!score) return 'text-grey-500';
-  if (score >= 60) return 'text-green-400';
-  if (score >= 30) return 'text-amber-400';
-  return 'text-grey-500';
-}
-
-function scoreBg(score: number | null): string {
-  if (!score) return 'bg-grey-700/30';
-  if (score >= 60) return 'bg-green-500/20';
-  if (score >= 30) return 'bg-amber-500/20';
-  return 'bg-grey-700/30';
-}
-
-/** Build a URL preserving current filters but overriding one param */
 function filterUrl(overrides: Record<string, string>): string {
-  const params = new URLSearchParams();
-  const current: Record<string, string> = {
-    status: statusFilter,
-    source: sourceFilter,
-    min_score: String(minScore),
-    min_rate: String(minRate),
-    sort: sortBy,
-    hide_seen: hideSeen ? '1' : '0',
-  };
-  const merged = { ...current, ...overrides };
-  for (const [k, v] of Object.entries(merged)) {
-    // Skip defaults to keep URL clean
-    if (k === 'status' && v === 'all') continue;
-    if (k === 'source' && v === 'all') continue;
-    if (k === 'min_score' && v === '0') continue;
-    if (k === 'min_rate' && v === '0') continue;
-    if (k === 'sort' && v === 'score') continue;
-    if (k === 'hide_seen' && v === '0') continue;
-    params.set(k, v);
-  }
-  const qs = params.toString();
-  return `/admin/leads/opportunities${qs ? '?' + qs : ''}`;
+  return buildFilterUrl('/admin/leads/opportunities', currentParams, filterDefaults, overrides);
 }
 
 const statusOptions = [

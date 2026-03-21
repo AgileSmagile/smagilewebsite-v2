@@ -144,8 +144,9 @@ function mergeRawData(
   return row;
 }
 
-async function fetchCodeHealth(): Promise<CodeHealthMetrics | null> {
-  const cached = cacheGet<CodeHealthMetrics>('metrics:code-health');
+async function fetchCodeHealth(project: string): Promise<CodeHealthMetrics | null> {
+  const cacheKey = `metrics:code-health:${project}`;
+  const cached = cacheGet<CodeHealthMetrics>(cacheKey);
   if (cached) return cached;
 
   const sb = getSupabaseAdmin();
@@ -154,11 +155,12 @@ async function fetchCodeHealth(): Promise<CodeHealthMetrics | null> {
   const { data, error } = await sb
     .from('code_health_snapshots')
     .select('*, raw_data')
+    .eq('project', project)
     .order('created_at', { ascending: false })
     .limit(30);
 
   if (error) {
-    console.error('[Metrics] code_health_snapshots query failed:', error.message);
+    console.error(`[Metrics] code_health_snapshots query failed (${project}):`, error.message);
     return null;
   }
 
@@ -171,7 +173,7 @@ async function fetchCodeHealth(): Promise<CodeHealthMetrics | null> {
     history,
   };
 
-  cacheSet('metrics:code-health', result, CACHE_TTL_CODE_HEALTH);
+  cacheSet(cacheKey, result, CACHE_TTL_CODE_HEALTH);
   return result;
 }
 
@@ -536,7 +538,7 @@ export async function getMosaicMetrics(): Promise<ProjectMetrics> {
   const errors: MetricsError[] = [];
 
   const [codeHealth, usage, aiUsage, funnel, pipeline] = await Promise.all([
-    fetchCodeHealth().catch((err) => {
+    fetchCodeHealth('mosaic').catch((err) => {
       errors.push({ section: 'Code Health', message: String(err) });
       return null;
     }),
@@ -559,6 +561,22 @@ export async function getMosaicMetrics(): Promise<ProjectMetrics> {
   ]);
 
   return { codeHealth, usage, aiUsage, funnel, pipeline, errors };
+}
+
+// -------------------------------------------------------------------
+// Public: fetch code health metrics for smagile.co
+// -------------------------------------------------------------------
+
+export async function getSmagileWebsiteMetrics(): Promise<ProjectMetrics> {
+  const errors: MetricsError[] = [];
+
+  const codeHealth = await fetchCodeHealth('smagile-website').catch((err) => {
+    errors.push({ section: 'Code Health', message: String(err) });
+    return null;
+  });
+
+  // smagile.co has no usage, AI, funnel, or pipeline metrics
+  return { codeHealth, usage: null, aiUsage: null, funnel: null, pipeline: null, errors };
 }
 
 // -------------------------------------------------------------------
