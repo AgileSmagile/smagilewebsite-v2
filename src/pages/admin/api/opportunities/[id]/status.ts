@@ -25,9 +25,10 @@ export async function POST({ params, request }: APIContext) {
   }
 
   const newStatus = body.status;
-  if (newStatus !== 'applied' && newStatus !== 'seen') {
+  const validStatuses = ['applied', 'seen', 'removed'];
+  if (!validStatuses.includes(newStatus || '')) {
     return new Response(
-      JSON.stringify({ error: 'Status must be "applied" or "seen"' }),
+      JSON.stringify({ error: `Status must be one of: ${validStatuses.join(', ')}` }),
       { status: 400, headers: { 'Content-Type': 'application/json' } },
     );
   }

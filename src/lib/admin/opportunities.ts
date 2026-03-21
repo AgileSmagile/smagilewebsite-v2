@@ -39,7 +39,7 @@ export interface OpportunityFilters {
 }
 
 /**
- * Fetch active job opportunities (excludes aged) with filtering.
+ * Fetch active job opportunities (excludes aged and removed) with filtering.
  */
 export async function getOpportunities(filters: OpportunityFilters = {}): Promise<JobOpportunity[]> {
   const sb = getSupabaseAdmin();
@@ -52,7 +52,7 @@ export async function getOpportunities(filters: OpportunityFilters = {}): Promis
   let query = sb
     .from('job_opportunities')
     .select('*')
-    .neq('status', 'aged')
+    .not('status', 'in', '("aged","removed")')
     .order(sortField, { ascending: false, nullsFirst: false });
 
   if (filters.status && filters.status !== 'all') {
@@ -93,7 +93,7 @@ export async function getSourceCounts(): Promise<Record<string, number>> {
   const { data } = await sb
     .from('job_opportunities')
     .select('source')
-    .neq('status', 'aged');
+    .not('status', 'in', '("aged","removed")');
 
   if (!data) return {};
   const counts: Record<string, number> = {};
@@ -111,7 +111,7 @@ export async function getOpportunitySummary(): Promise<OpportunitySummary> {
   const { data, error } = await sb
     .from('job_opportunities')
     .select('status, match_score')
-    .neq('status', 'aged');
+    .not('status', 'in', '("aged","removed")');
 
   if (error || !data) return { total: 0, new: 0, seen: 0, applied: 0, highMatch: 0 };
 
@@ -125,22 +125,32 @@ export async function getOpportunitySummary(): Promise<OpportunitySummary> {
 }
 
 /**
- * Fetch emergency job opportunities (inside IR35 and unknown), excludes aged.
+ * Fetch emergency job opportunities (inside IR35 and unknown).
+ * Excludes aged and removed. Supports recency filtering.
  * Sorted by match score descending.
  */
-export async function getEmergencyOpportunities(statusFilter?: string): Promise<JobOpportunity[]> {
+export async function getEmergencyOpportunities(
+  statusFilter?: string,
+  recencyDays?: number,
+): Promise<JobOpportunity[]> {
   const sb = getSupabaseAdmin();
   if (!sb) return [];
 
   let query = sb
     .from('job_opportunities')
     .select('*')
-    .neq('status', 'aged')
+    .not('status', 'in', '("aged","removed")')
     .in('ir35_status', ['inside', 'unknown'])
     .order('match_score', { ascending: false, nullsFirst: false });
 
   if (statusFilter && statusFilter !== 'all') {
     query = query.eq('status', statusFilter);
+  }
+
+  if (recencyDays && recencyDays > 0) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - recencyDays);
+    query = query.gte('date_posted', cutoff.toISOString());
   }
 
   const { data, error } = await query;
@@ -155,16 +165,27 @@ export async function getEmergencyOpportunities(statusFilter?: string): Promise<
 
 /**
  * Get summary counts for the emergency opportunities dashboard (inside IR35 and unknown).
+ * Supports recency filtering to match the main query.
  */
-export async function getEmergencyOpportunitySummary(): Promise<OpportunitySummary> {
+export async function getEmergencyOpportunitySummary(
+  recencyDays?: number,
+): Promise<OpportunitySummary> {
   const sb = getSupabaseAdmin();
   if (!sb) return { total: 0, new: 0, seen: 0, applied: 0, highMatch: 0 };
 
-  const { data, error } = await sb
+  let query = sb
     .from('job_opportunities')
     .select('status, match_score, ir35_status')
-    .neq('status', 'aged')
+    .not('status', 'in', '("aged","removed")')
     .in('ir35_status', ['inside', 'unknown']);
+
+  if (recencyDays && recencyDays > 0) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - recencyDays);
+    query = query.gte('date_posted', cutoff.toISOString());
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) return { total: 0, new: 0, seen: 0, applied: 0, highMatch: 0 };
 
@@ -188,7 +209,7 @@ export async function getPartnerOpportunities(): Promise<JobOpportunity[]> {
   const { data, error } = await sb
     .from('job_opportunities')
     .select('*')
-    .neq('status', 'aged')
+    .not('status', 'in', '("aged","removed")')
     .eq('ir35_status', 'outside')
     .order('date_posted', { ascending: false, nullsFirst: false });
 
