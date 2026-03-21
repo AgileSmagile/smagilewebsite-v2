@@ -207,16 +207,34 @@ function funnelPct(value: number, max: number): number {
                 trend={invertTrend(getTrend(latest.todo_fixme_count, prev?.todo_fixme_count))}
                 sparkline={extractSparkline(history, 'todo_fixme_count')}
               />
+              <StatCard
+                label="Bundle Size"
+                value={latest.bundle_size_kb !== null ? `${formatNumber(latest.bundle_size_kb)} KB` : '--'}
+                subtitle="Production bundle"
+                trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
+                sparkline={extractSparkline(history, 'bundle_size_kb')}
+                tooltip="Total production bundle size in kilobytes"
+              />
             </div>
 
             {/* Secondary code health row */}
             <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
               <StatCard
+                label="Type Safety"
+                value={formatNumber(latest.type_safety_any_count)}
+                subtitle="'any' usages in codebase"
+                trend={invertTrend(getTrend(latest.type_safety_any_count, prev?.type_safety_any_count))}
+                sparkline={extractSparkline(history, 'type_safety_any_count')}
+                tooltip="Count of 'any' type annotations — lower is better"
+              />
+              <StatCard
                 label="Change Velocity"
                 value={latest.insertions_30d !== null
                   ? `+${formatNumber(latest.insertions_30d)} / -${formatNumber(latest.deletions_30d)}`
                   : '--'}
-                subtitle="Last 30 days"
+                subtitle={latest.files_changed_30d !== null
+                  ? `${formatNumber(latest.files_changed_30d)} files changed`
+                  : 'Last 30 days'}
                 tooltip="Lines added and removed in the last 30 days"
               />
               <StatCard
@@ -427,42 +445,73 @@ function funnelPct(value: number, max: number): number {
         )}
       </div>
 
-      {/* ── Placeholder metrics (coming soon) ── */}
+      {/* ── Operational Metrics ── */}
       <section class="mb-6">
-        <h3 class="text-lg font-semibold text-white mb-3">
-          Operational Metrics
-          <span class="text-xs font-normal text-grey-500 ml-2">coming soon</span>
-        </h3>
+        <h3 class="text-lg font-semibold text-white mb-3">Operational Metrics</h3>
         <div class="grid gap-3 grid-cols-2 lg:grid-cols-3">
+          {/* Live metrics from code health snapshots */}
+          {latest ? (
+            <>
+              <StatCard
+                label="Build Time"
+                value={formatDuration(latest.build_time_ms)}
+                subtitle="Production build"
+                trend={invertTrend(getTrend(latest.build_time_ms, prev?.build_time_ms))}
+                sparkline={extractSparkline(history, 'build_time_ms')}
+                tooltip="Time to complete a production build"
+              />
+              <StatCard
+                label="Bundle Size"
+                value={latest.bundle_size_kb !== null ? `${formatNumber(latest.bundle_size_kb)} KB` : '--'}
+                subtitle="Production bundle"
+                trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
+                sparkline={extractSparkline(history, 'bundle_size_kb')}
+                tooltip="Total production bundle size — lower is better"
+              />
+              <StatCard
+                label="Type Safety"
+                value={formatNumber(latest.type_safety_any_count)}
+                subtitle="'any' usages"
+                trend={invertTrend(getTrend(latest.type_safety_any_count, prev?.type_safety_any_count))}
+                sparkline={extractSparkline(history, 'type_safety_any_count')}
+                tooltip="Count of 'any' type annotations — lower is better"
+              />
+            </>
+          ) : (
+            <>
+              <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+                <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Build Time</p>
+                <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+                <p class="mt-1 text-xs text-grey-600">Awaiting first code health snapshot</p>
+              </div>
+              <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+                <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Bundle Size</p>
+                <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+                <p class="mt-1 text-xs text-grey-600">Awaiting first code health snapshot</p>
+              </div>
+              <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+                <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Type Safety</p>
+                <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+                <p class="mt-1 text-xs text-grey-600">Awaiting first code health snapshot</p>
+              </div>
+            </>
+          )}
+
+          {/* Placeholder metrics — awaiting data collection */}
           <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
-            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Time Since Last Deploy</p>
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider" title="Time to Value: average time from signup to first CV generation">Time to Value</p>
             <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
-            <p class="mt-1 text-xs text-grey-600">Coming soon</p>
-          </div>
-          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
-            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Release Frequency</p>
-            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
-            <p class="mt-1 text-xs text-grey-600">Deploys per week</p>
+            <p class="mt-1 text-xs text-grey-600">Average time from signup to first CV export</p>
           </div>
           <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
             <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Infrastructure Health</p>
             <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
-            <p class="mt-1 text-xs text-grey-600" title="Raspberry Pi CPU, memory and disk usage">Pi CPU / memory / disk</p>
-          </div>
-          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
-            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Churn Signals</p>
-            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
-            <p class="mt-1 text-xs text-grey-600">Users who have not returned</p>
-          </div>
-          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
-            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider" title="Time to Value: average time from signup to first CV generation">Time to Value</p>
-            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
-            <p class="mt-1 text-xs text-grey-600">Signup to first CV</p>
+            <p class="mt-1 text-xs text-grey-600" title="Raspberry Pi CPU, memory and disk usage">Pi CPU / memory / disk via SSH probe</p>
           </div>
           <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
             <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider" title="p95 Response Time: 95th percentile server response time">p95 Response Time</p>
             <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
-            <p class="mt-1 text-xs text-grey-600">95th percentile latency</p>
+            <p class="mt-1 text-xs text-grey-600">95th percentile server latency</p>
           </div>
         </div>
       </section>
@@ -475,12 +524,12 @@ function funnelPct(value: number, max: number): number {
           </summary>
           <div class="px-4 pb-3 space-y-1">
             {[
-              ['Next.js 16', 'App Router, Turbopack'],
+              ['Next.js 16.2.1', 'App Router, Turbopack'],
               ['Supabase', 'Postgres, Auth, Storage'],
               ['Tailwind CSS 4', 'Styling'],
-              ['Puppeteer', 'PDF generation'],
+              ['Puppeteer', 'PDF generation (@sparticuz/chromium)'],
               ['docx', 'Word export'],
-              ['@anthropic-ai/sdk', 'Claude AI'],
+              ['@anthropic-ai/sdk', 'Claude AI integration'],
               ['Vercel', 'Hosting (free tier)'],
             ].map(([tool, purpose]) => (
               <div class="flex items-center justify-between text-xs">

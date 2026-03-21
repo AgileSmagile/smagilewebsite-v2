@@ -115,13 +115,14 @@ export async function getOpportunitySummary(): Promise<OpportunitySummary> {
 
   if (error || !data) return { total: 0, new: 0, seen: 0, applied: 0, highMatch: 0 };
 
-  return {
-    total: data.length,
-    new: data.filter((d) => d.status === 'new').length,
-    seen: data.filter((d) => d.status === 'seen').length,
-    applied: data.filter((d) => d.status === 'applied').length,
-    highMatch: data.filter((d) => (d.match_score || 0) >= 60).length,
-  };
+  const summary: OpportunitySummary = { total: data.length, new: 0, seen: 0, applied: 0, highMatch: 0 };
+  for (const d of data) {
+    if (d.status === 'new') summary.new++;
+    else if (d.status === 'seen') summary.seen++;
+    else if (d.status === 'applied') summary.applied++;
+    if ((d.match_score || 0) >= 60) summary.highMatch++;
+  }
+  return summary;
 }
 
 /**
@@ -189,13 +190,14 @@ export async function getEmergencyOpportunitySummary(
 
   if (error || !data) return { total: 0, new: 0, seen: 0, applied: 0, highMatch: 0 };
 
-  return {
-    total: data.length,
-    new: data.filter((d) => d.status === 'new').length,
-    seen: data.filter((d) => d.status === 'seen').length,
-    applied: data.filter((d) => d.status === 'applied').length,
-    highMatch: data.filter((d) => (d.match_score || 0) >= 60).length,
-  };
+  const summary: OpportunitySummary = { total: data.length, new: 0, seen: 0, applied: 0, highMatch: 0 };
+  for (const d of data) {
+    if (d.status === 'new') summary.new++;
+    else if (d.status === 'seen') summary.seen++;
+    else if (d.status === 'applied') summary.applied++;
+    if ((d.match_score || 0) >= 60) summary.highMatch++;
+  }
+  return summary;
 }
 
 /**

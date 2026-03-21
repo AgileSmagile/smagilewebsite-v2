@@ -135,15 +135,20 @@ export async function getOutreachSummary(): Promise<OutreachSummary> {
 
   if (error || !data) return empty;
 
-  return {
+  const summary: OutreachSummary = {
     total: data.length,
-    new: data.filter((d) => d.status === 'new').length,
-    sent: data.filter((d) => d.status === 'sent').length,
-    skipped: data.filter((d) => d.status === 'skipped').length,
-    byTrigger: {
-      new_role: data.filter((d) => d.trigger_type === 'new_role').length,
-      stale_role: data.filter((d) => d.trigger_type === 'stale_role').length,
-      closed_role: data.filter((d) => d.trigger_type === 'closed_role').length,
-    },
+    new: 0, sent: 0, skipped: 0,
+    byTrigger: { new_role: 0, stale_role: 0, closed_role: 0 },
   };
+
+  for (const d of data) {
+    if (d.status === 'new') summary.new++;
+    else if (d.status === 'sent') summary.sent++;
+    else if (d.status === 'skipped') summary.skipped++;
+
+    const trigger = d.trigger_type as keyof typeof summary.byTrigger;
+    if (trigger in summary.byTrigger) summary.byTrigger[trigger]++;
+  }
+
+  return summary;
 }

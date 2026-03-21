@@ -5,6 +5,8 @@ import StatCard from '../../../components/admin/StatCard.astro';
 import OpportunityStatusScript from '../../../components/admin/OpportunityStatusScript.astro';
 import { getEmergencyOpportunities, getEmergencyOpportunitySummary } from '../../../lib/admin/opportunities';
 import { getProfileByEmail, scoreOpportunity, type ProfileMatchResult } from '../../../lib/admin/profile-matching';
+import { formatRate, formatDate, scoreColour, scoreBg } from '../../../lib/admin/format';
+import { buildFilterUrl } from '../../../lib/admin/filter-url';
 
 export const prerender = false;
 
@@ -45,29 +47,6 @@ const highMatchCount = profile
   ? scoredOpportunities.filter((o) => (o.profileMatch?.score ?? 0) >= 60).length
   : summary.highMatch;
 
-function formatRate(min: number | null, max: number | null): string {
-  if (!min && !max) return 'Not stated';
-  if (min && max && min !== max) return `£${min}-£${max}/day`;
-  return `£${min || max}/day`;
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-}
-
-function scoreColour(score: number): string {
-  if (score >= 60) return 'text-green-400';
-  if (score >= 30) return 'text-amber-400';
-  return 'text-grey-500';
-}
-
-function scoreBg(score: number): string {
-  if (score >= 60) return 'bg-green-500/20';
-  if (score >= 30) return 'bg-amber-500/20';
-  return 'bg-grey-700/30';
-}
-
 function getDisplayScore(opp: ScoredOpportunity): number {
   return opp.profileMatch?.score ?? opp.match_score ?? 0;
 }
@@ -86,22 +65,11 @@ const recencyOptions = [
   { value: 'all', label: 'All time' },
 ];
 
+const emergencyDefaults: Record<string, string> = { status: 'all', recency: '7' };
+const emergencyParams: Record<string, string> = { status: statusFilter, recency: recencyParam };
+
 function buildUrl(params: Record<string, string>): string {
-  const base = '/admin/leads/emergency-search';
-  const merged = {
-    status: statusFilter,
-    recency: recencyParam,
-    ...params,
-  };
-  const searchParams = new URLSearchParams();
-  for (const [key, value] of Object.entries(merged)) {
-    // Omit defaults to keep URLs clean
-    if (key === 'status' && value === 'all') continue;
-    if (key === 'recency' && value === '7') continue;
-    searchParams.set(key, value);
-  }
-  const qs = searchParams.toString();
-  return qs ? `${base}?${qs}` : base;
+  return buildFilterUrl('/admin/leads/emergency-search', emergencyParams, emergencyDefaults, params);
 }
 ---
 
