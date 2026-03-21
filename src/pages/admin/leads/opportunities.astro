@@ -2,6 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
+import OpportunityStatusScript from '../../../components/admin/OpportunityStatusScript.astro';
 import { getOpportunities, getOpportunitySummary, getSourceCounts } from '../../../lib/admin/opportunities';
 
 export const prerender = false;
@@ -345,64 +346,4 @@ const sortOptions = [
   </p>
 </AdminLayout>
 
-<script>
-  document.querySelectorAll<HTMLButtonElement>('.opp-status-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const oppId = btn.dataset.oppId;
-      const action = btn.dataset.action;
-      if (!oppId || !action) return;
-
-      btn.disabled = true;
-      btn.textContent = 'Updating...';
-
-      try {
-        const res = await fetch(`/admin/api/opportunities/${oppId}/status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: action }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Request failed' }));
-          throw new Error(err.error || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        const row = btn.closest('tr');
-        if (!row) return;
-
-        if (action === 'applied') {
-          row.classList.add('opacity-50');
-          const cell = btn.closest('td');
-          if (cell) {
-            cell.querySelectorAll('.opp-status-btn').forEach((b) => b.remove());
-            const badge = document.createElement('span');
-            badge.className = 'px-2 py-0.5 text-xs font-medium rounded-full bg-secondary/20 text-secondary';
-            badge.textContent = 'Applied';
-            cell.appendChild(badge);
-
-            if (data.businessmap_card_id) {
-              const link = document.createElement('a');
-              link.href = `https://smagile.kanbanize.com/ctrl_board/5/cards/${data.businessmap_card_id}/details`;
-              link.target = '_blank';
-              link.rel = 'noopener';
-              link.className = 'px-2 py-0.5 text-xs font-medium rounded bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors';
-              link.title = 'View on Businessmap';
-              link.textContent = `#${data.businessmap_card_id}`;
-              cell.appendChild(link);
-            }
-          }
-        } else if (action === 'seen') {
-          const dot = row.querySelector('.bg-blue-400');
-          if (dot) dot.remove();
-          btn.remove();
-        }
-      } catch (err) {
-        console.error('Status update failed:', err);
-        btn.disabled = false;
-        btn.textContent = action === 'applied' ? 'Applied' : 'Mark Seen';
-        alert(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    });
-  });
-</script>
+<OpportunityStatusScript />
