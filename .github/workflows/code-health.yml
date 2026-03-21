@@ -1,0 +1,63 @@
+name: Code Health Metrics
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '30 6 * * *' # Daily at 06:30 UTC (offset from mosaic's 06:00)
+
+jobs:
+  collect-metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed for git stats
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect code health metrics
+        id: metrics
+        run: |
+          chmod +x bin/collect-metrics.sh
+          METRICS_JSON=$(bin/collect-metrics.sh)
+          echo "json<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$METRICS_JSON" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "--- Collected metrics ---"
+          echo "$METRICS_JSON" | node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')), null, 2))"
+
+      - name: Store metrics in Supabase
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_KEY" ]; then
+            curl -s -X POST "${SUPABASE_URL}/rest/v1/code_health_snapshots" \
+              -H "apikey: ${SUPABASE_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_KEY}" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: return=minimal" \
+              -d '${{ steps.metrics.outputs.json }}'
+            echo "Metrics stored in Supabase"
+          else
+            echo "Supabase secrets not configured — skipping persistence"
+          fi
+
+      - name: Summary
+        run: |
+          echo "### Code Health Metrics (smagile.co)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          echo '${{ steps.metrics.outputs.json }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
