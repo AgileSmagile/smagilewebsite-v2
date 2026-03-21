@@ -1,0 +1,133 @@
+---
+/**
+ * Shared client-side script for opportunity status buttons (Applied / Mark Seen).
+ * Used by both opportunities.astro and emergency-search.astro.
+ *
+ * Handles:
+ * - Disabling buttons during API call to prevent double-clicks
+ * - Visual loading state during API call
+ * - DOM update only after confirmed API success
+ * - Inline error toast on failure (no alert())
+ * - Businessmap card link rendering on applied
+ */
+---
+
+<script>
+  function initOpportunityButtons() {
+    document.querySelectorAll<HTMLButtonElement>('.opp-status-btn').forEach((btn) => {
+      // Guard against double-binding if script runs more than once
+      if (btn.dataset.bound === '1') return;
+      btn.dataset.bound = '1';
+
+      btn.addEventListener('click', async () => {
+        const oppId = btn.dataset.oppId;
+        const action = btn.dataset.action;
+        if (!oppId || !action) return;
+
+        // Prevent double-clicks: disable immediately
+        if (btn.disabled) return;
+        btn.disabled = true;
+
+        const originalText = btn.textContent || '';
+        btn.textContent = 'Updating\u2026';
+        btn.classList.add('opacity-60', 'cursor-wait');
+
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000);
+
+          const res = await fetch(`/admin/api/opportunities/${oppId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: action }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeout);
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(err.error || `HTTP ${res.status}`);
+          }
+
+          const data = await res.json();
+          const row = btn.closest('tr');
+          if (!row) return;
+
+          if (action === 'applied') {
+            row.classList.add('opacity-50');
+            const cell = btn.closest('td');
+            if (cell) {
+              // Remove all status buttons from the actions cell
+              cell.querySelectorAll('.opp-status-btn').forEach((b) => b.remove());
+
+              // Insert Applied badge
+              const badge = document.createElement('span');
+              badge.className = 'px-2 py-0.5 text-xs font-medium rounded-full bg-secondary/20 text-secondary';
+              badge.textContent = 'Applied';
+              cell.appendChild(badge);
+
+              // Add Businessmap card link if returned
+              if (data.businessmap_card_id) {
+                const link = document.createElement('a');
+                link.href = `https://smagile.kanbanize.com/ctrl_board/5/cards/${data.businessmap_card_id}/details`;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.className = 'px-2 py-0.5 text-xs font-medium rounded bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors';
+                link.title = 'View on Businessmap';
+                link.textContent = `#${data.businessmap_card_id}`;
+                cell.appendChild(link);
+              }
+            }
+          } else if (action === 'seen') {
+            // Remove the "new" blue dot indicator
+            const dot = row.querySelector('.bg-blue-400');
+            if (dot) dot.remove();
+            // Remove the Mark Seen button
+            btn.remove();
+          }
+        } catch (err) {
+          console.error('Status update failed:', err);
+
+          // Restore button to clickable state
+          btn.disabled = false;
+          btn.textContent = originalText;
+          btn.classList.remove('opacity-60', 'cursor-wait');
+
+          // Show inline error toast instead of alert()
+          const msg = err instanceof Error
+            ? (err.name === 'AbortError' ? 'Request timed out' : err.message)
+            : 'Unknown error';
+          showErrorToast(btn, msg);
+        }
+      });
+    });
+  }
+
+  function showErrorToast(anchor: HTMLElement, message: string) {
+    // Remove any existing toast
+    const existing = anchor.closest('td')?.querySelector('.opp-error-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'opp-error-toast absolute mt-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30 whitespace-nowrap z-10';
+    toast.textContent = message;
+
+    // Position relative to the button's parent cell
+    const cell = anchor.closest('td');
+    if (cell) {
+      cell.style.position = 'relative';
+      cell.appendChild(toast);
+    }
+
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => toast.remove(), 4000);
+  }
+
+  // Bind on DOMContentLoaded for safety, and also immediately if DOM is already ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initOpportunityButtons);
+  } else {
+    initOpportunityButtons();
+  }
+</script>
