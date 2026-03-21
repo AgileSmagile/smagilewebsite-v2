@@ -1,7 +1,6 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import AdminSidebar from '../components/admin/AdminSidebar.astro';
-import ThemeToggle from '../components/ThemeToggle.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -29,7 +28,6 @@ const userEmail = Astro.request.headers.get('Cf-Access-Authenticated-User-Email'
       <div class="flex items-center gap-3">
         {userEmail && <span class="hidden sm:inline text-xs text-grey-500">{userEmail}</span>}
         <a href="/" class="text-xs text-warm-300 hover:text-secondary transition-colors">View Site</a>
-        <ThemeToggle />
       </div>
     </div>
   </header>
