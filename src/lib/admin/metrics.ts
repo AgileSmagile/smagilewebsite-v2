@@ -137,7 +137,7 @@ function mergeRawData(
 
   for (const field of auditFields) {
     if (Array.isArray(raw[field])) {
-      (row as Record<string, unknown>)[field] = raw[field];
+      (row as unknown as Record<string, unknown>)[field] = raw[field];
     }
   }
 
@@ -451,7 +451,7 @@ export async function fetchPipelineMetrics(): Promise<PipelineMetrics | null> {
                 });
                 stagesByDoc.set(key, existing);
               }
-            }),
+            }) as Promise<void>,
         );
       }
 
@@ -476,7 +476,7 @@ export async function fetchPipelineMetrics(): Promise<PipelineMetrics | null> {
                 });
                 stagesByVariant.set(key, existing);
               }
-            }),
+            }) as Promise<void>,
         );
       }
 

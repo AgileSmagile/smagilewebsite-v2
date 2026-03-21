@@ -89,8 +89,8 @@ export async function getOutreachOpportunities(
   if (!data) return [];
 
   // Flatten the joined data
-  return data.map((row: any) => {
-    const job = row.job_opportunities;
+  return data.map((row: Record<string, unknown>) => {
+    const job = row.job_opportunities as Record<string, unknown> | null;
     return {
       id: row.id,
       job_opportunity_id: row.job_opportunity_id,
