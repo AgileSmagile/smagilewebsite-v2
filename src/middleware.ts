@@ -1,27 +1,76 @@
 import { defineMiddleware } from 'astro:middleware';
 
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'X-XSS-Protection': '1; mode=block',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://cloudflareinsights.com",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '),
+};
+
+function applySecurityHeaders(response: Response): Response {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
-  const response = await next();
+  const { pathname } = context.url;
+  const hostname = context.url.hostname;
+  const isAdmin = pathname.startsWith('/admin');
 
-  // Security headers
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://cloudflareinsights.com",
-  );
+  // Admin auth check — BEFORE calling next() to prevent handler execution
+  if (isAdmin) {
+    const isLocal =
+      import.meta.env.DEV && (hostname === 'localhost' || hostname === '127.0.0.1');
 
-  // Server-side auth check for admin routes
-  if (context.url.pathname.startsWith('/admin')) {
-    const cfEmail = context.request.headers.get('Cf-Access-Authenticated-User-Email');
-    const isLocal = context.url.hostname === 'localhost' || context.url.hostname === '127.0.0.1';
-    if (!cfEmail && !isLocal) {
-      return new Response('Unauthorised', { status: 403 });
+    if (!isLocal) {
+      const cfEmail = context.request.headers.get('Cf-Access-Authenticated-User-Email');
+
+      if (!cfEmail) {
+        return new Response('Unauthorised', { status: 403 });
+      }
+
+      // Verify email against allowlist
+      const adminEmails = (
+        process.env.ADMIN_EMAILS ||
+        process.env.OWNER_EMAIL ||
+        ''
+      )
+        .split(',')
+        .map((e) => e.trim().toLowerCase());
+
+      if (!adminEmails.includes(cfEmail.toLowerCase())) {
+        return new Response('Forbidden', { status: 403 });
+      }
+    }
+
+    // CSRF origin validation for mutating API requests
+    const method = context.request.method;
+    if (
+      ['POST', 'PUT', 'DELETE'].includes(method) &&
+      pathname.startsWith('/admin/api/')
+    ) {
+      const origin = context.request.headers.get('origin');
+      const host = context.request.headers.get('host');
+      if (origin && !origin.endsWith(host || '')) {
+        return new Response('Invalid origin', { status: 403 });
+      }
     }
   }
 
-  return response;
+  const response = await next();
+  return applySecurityHeaders(response);
 });
