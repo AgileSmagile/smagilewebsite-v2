@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+# Deploy smagilewebsite-v2 to the Pi webserver via Cloudflare tunnel.
+#
+# Connects to the Pi, pulls latest code, conditionally installs dependencies,
+# builds the site, and restarts the systemd service. Each step is gated on the
+# previous one succeeding, so a failed build will never restart the service.
+#
+# Usage:
+#   bin/deploy           -- full deploy (pull, build, restart)
+#   bin/deploy --dry-run -- connect and show what would happen without changing anything
+#
+# Environment variables (required):
+#   CF_ACCESS_CLIENT_ID      -- Cloudflare Access service token ID
+#   CF_ACCESS_CLIENT_SECRET  -- Cloudflare Access service token secret
+#
+# These can be set directly or will be sourced from the sonnet-agent .env file.
+
+set -euo pipefail
+
+# -- Configuration --------------------------------------------------------
+REMOTE_USER="smagile-server"
+REMOTE_HOST="ssh.smagile.co"
+REMOTE_DIR="/home/smagile-server/smagilewebsite-v2"
+SERVICE_NAME="smagile-web"
+SONNET_AGENT_ENV="C:/Users/James/Projects/sonnet-agent/.env"
+CLOUDFLARED="/c/Program Files (x86)/cloudflared/cloudflared.exe"
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+  DRY_RUN=true
+fi
+
+# -- Resolve Cloudflare service tokens ------------------------------------
+if [[ -z "${CF_ACCESS_CLIENT_ID:-}" || -z "${CF_ACCESS_CLIENT_SECRET:-}" ]]; then
+  if [[ -f "$SONNET_AGENT_ENV" ]]; then
+    # shellcheck source=/dev/null
+    source "$SONNET_AGENT_ENV"
+  fi
+fi
+
+: "${CF_ACCESS_CLIENT_ID:?CF_ACCESS_CLIENT_ID is not set. Export it or add it to $SONNET_AGENT_ENV}"
+: "${CF_ACCESS_CLIENT_SECRET:?CF_ACCESS_CLIENT_SECRET is not set. Export it or add it to $SONNET_AGENT_ENV}"
+
+export TUNNEL_SERVICE_TOKEN_ID="$CF_ACCESS_CLIENT_ID"
+export TUNNEL_SERVICE_TOKEN_SECRET="$CF_ACCESS_CLIENT_SECRET"
+
+SSH_PROXY="\"$CLOUDFLARED\" access ssh --hostname $REMOTE_HOST --id \"\$TUNNEL_SERVICE_TOKEN_ID\" --secret \"\$TUNNEL_SERVICE_TOKEN_SECRET\""
+
+# -- Helper: run a command on the Pi via SSH -------------------------------
+remote() {
+  ssh -o ProxyCommand="$SSH_PROXY" \
+      -o StrictHostKeyChecking=accept-new \
+      "${REMOTE_USER}@${REMOTE_HOST}" "$@"
+}
+
+log() {
+  echo "[deploy] $*"
+}
+
+# -- Dry-run mode ----------------------------------------------------------
+if $DRY_RUN; then
+  log "Dry run -- connecting to verify SSH access..."
+  remote bash -c "'echo Connected to \$(hostname) as \$(whoami) && cd $REMOTE_DIR && git status --short'"
+  log "Dry run complete. No changes made."
+  exit 0
+fi
+
+# -- Deploy ----------------------------------------------------------------
+log "Starting deployment to $REMOTE_HOST..."
+
+# The entire deploy runs in a single SSH session to avoid multiple tunnel
+# connections. The remote script handles its own error reporting. With set -e
+# on the local side, a non-zero exit from the remote script will propagate
+# and stop the local script too.
+#
+# We use a heredoc with placeholder substitution rather than passing variables
+# through SSH, which avoids quoting headaches.
+
+DEPLOY_SCRIPT=$(cat <<'REMOTE_SCRIPT'
+set -uo pipefail
+
+DEPLOY_DIR="__REMOTE_DIR__"
+SERVICE="__SERVICE_NAME__"
+
+cd "$DEPLOY_DIR" || { echo "[remote] FAILED: could not cd to $DEPLOY_DIR" >&2; exit 1; }
+
+echo "[remote] Working directory: $(pwd)"
+
+# 1. Snapshot package-lock hash before pull
+LOCK_HASH_BEFORE=""
+if [[ -f package-lock.json ]]; then
+  LOCK_HASH_BEFORE=$(md5sum package-lock.json | awk '{print $1}')
+fi
+
+# 2. Git pull (fast-forward only to avoid merge conflicts)
+echo "[remote] Pulling latest changes..."
+if ! git pull --ff-only; then
+  echo "[remote] FAILED: git pull failed. Is the working tree clean?" >&2
+  exit 1
+fi
+
+# 3. Check if package-lock changed
+LOCK_HASH_AFTER=""
+if [[ -f package-lock.json ]]; then
+  LOCK_HASH_AFTER=$(md5sum package-lock.json | awk '{print $1}')
+fi
+
+if [[ "$LOCK_HASH_BEFORE" != "$LOCK_HASH_AFTER" ]]; then
+  echo "[remote] package-lock.json changed -- running npm ci..."
+  if ! npm ci; then
+    echo "[remote] FAILED: npm ci failed." >&2
+    exit 2
+  fi
+  echo "[remote] Dependencies installed."
+else
+  echo "[remote] package-lock.json unchanged -- skipping npm ci."
+fi
+
+# 4. Build
+echo "[remote] Building site..."
+if ! npm run build; then
+  echo "[remote] FAILED: build failed. Service NOT restarted." >&2
+  exit 3
+fi
+echo "[remote] Build succeeded."
+
+# 5. Restart service (only reached if build succeeded)
+echo "[remote] Restarting $SERVICE..."
+if ! sudo systemctl restart "$SERVICE"; then
+  echo "[remote] FAILED: could not restart $SERVICE." >&2
+  exit 4
+fi
+
+echo "[remote] Service $SERVICE restarted."
+echo "[remote] Deployment complete."
+REMOTE_SCRIPT
+)
+
+# Substitute config values into the remote script
+DEPLOY_SCRIPT="${DEPLOY_SCRIPT//__REMOTE_DIR__/$REMOTE_DIR}"
+DEPLOY_SCRIPT="${DEPLOY_SCRIPT//__SERVICE_NAME__/$SERVICE_NAME}"
+
+if ! remote bash -s <<< "$DEPLOY_SCRIPT"; then
+  log "FAILED: deployment did not complete successfully." >&2
+  exit 1
+fi
+
+log "Deployment successful."
