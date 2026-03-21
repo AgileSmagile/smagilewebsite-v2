@@ -11,13 +11,13 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    environment: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'production' || 'staging' }}
     timeout-minutes: 15
 
     env:
-      DEPLOY_DIR: ${{ github.ref_name == 'main' && '/home/smagile-server/smagilewebsite-v2' || '/home/smagile-server/smagilewebsite-v2-staging' }}
-      SERVICE_NAME: ${{ github.ref_name == 'main' && 'smagile-web' || 'smagile-web-staging' }}
-      HEALTH_URL: ${{ github.ref_name == 'main' && 'http://localhost:4321' || 'http://localhost:4322' }}
+      DEPLOY_DIR: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && '/home/smagile-server/smagilewebsite-v2' || '/home/smagile-server/smagilewebsite-v2-staging' }}
+      SERVICE_NAME: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'smagile-web' || 'smagile-web-staging' }}
+      HEALTH_URL: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'http://localhost:4321' || 'http://localhost:4322' }}
 
     steps:
       - name: Checkout
@@ -109,7 +109,7 @@ jobs:
       - name: Deploy summary
         if: success()
         run: |
-          ENV_LABEL="${{ github.ref_name == 'main' && 'Production (smagile.co)' || 'Staging (staging.smagile.co)' }}"
+          ENV_LABEL="${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'Production (smagile.co)' || 'Staging (staging.smagile.co)' }}"
           echo "### Deployed to ${ENV_LABEL}" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
