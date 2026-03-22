@@ -1,8 +1,8 @@
-import { getSupabaseAdmin } from './supabase';
+import { getMosaicSupabase } from './supabase';
 
 /**
- * Mosaic CV profile structured data shape.
- * Matches ParsedCVData from the mosaic project.
+ * Mosaic CV profile data assembled from the actual database tables
+ * (not the structured_data JSONB blob, which may be null).
  */
 export interface ProfileStructuredData {
   profile?: {
@@ -36,29 +36,66 @@ export interface ProfileMatchResult {
 }
 
 /**
- * Fetch the Mosaic CV profile structured_data for a user, looked up by email.
- * Uses the service role key to bypass RLS since the smagile website
- * authenticates via Cloudflare Access, not Supabase Auth.
+ * Fetch a Mosaic CV profile by email, assembled from the real database tables.
+ * Connects to the Mosaic Supabase project (separate from the smagile website DB).
  */
 export async function getProfileByEmail(email: string): Promise<ProfileStructuredData | null> {
-  const sb = getSupabaseAdmin();
+  const sb = getMosaicSupabase();
   if (!sb) return null;
 
-  const { data, error } = await sb
+  // Look up the user profile by email
+  const { data: profile, error: profileErr } = await sb
     .from('profiles')
-    .select('id, email, structured_data')
+    .select('id, full_name, email, location')
     .eq('email', email)
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    console.error('[ProfileMatching] Fetch error:', error.message);
+  if (profileErr) {
+    console.error('[ProfileMatching] Profile fetch error:', profileErr.message);
     return null;
   }
 
-  if (!data?.structured_data) return null;
+  if (!profile) return null;
 
-  return data.structured_data as ProfileStructuredData;
+  // Fetch experiences, skills, and certifications in parallel
+  const [expsResult, skillsResult, certsResult] = await Promise.all([
+    sb.from('experiences')
+      .select('job_title, organisation, start_date, end_date, description, achievements(content, tags)')
+      .eq('user_id', profile.id)
+      .order('sort_order'),
+    sb.from('skills')
+      .select('name, category')
+      .eq('user_id', profile.id),
+    sb.from('certifications')
+      .select('name, issuing_body')
+      .eq('user_id', profile.id),
+  ]);
+
+  if (expsResult.error) {
+    console.error('[ProfileMatching] Experiences fetch error:', expsResult.error.message);
+  }
+
+  return {
+    profile: {
+      full_name: profile.full_name ?? undefined,
+      email: profile.email ?? undefined,
+      location: profile.location ?? undefined,
+    },
+    experiences: (expsResult.data ?? []).map(exp => ({
+      job_title: exp.job_title,
+      organisation: exp.organisation,
+      start_date: exp.start_date,
+      end_date: exp.end_date,
+      description: exp.description ?? undefined,
+      achievements: (exp.achievements ?? []).map((a: { content: string; tags?: string[] }) => ({
+        raw_text: a.content,
+        tags: a.tags,
+      })),
+    })),
+    skills: skillsResult.data ?? [],
+    certifications: certsResult.data ?? [],
+  };
 }
 
 /**
