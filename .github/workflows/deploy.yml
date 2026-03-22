@@ -31,3 +31,21 @@ jobs:
 
       - name: Run tests
         run: npm run test:run
+
+      - name: Create board card on failure
+        if: failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          BMAP_KEY: ${{ secrets.BUSINESSMAP_API_KEY }}
+        run: |
+          if [ -z "$BMAP_KEY" ]; then
+            echo "BUSINESSMAP_API_KEY not configured — skipping board notification"
+            exit 0
+          fi
+          TITLE="CI failure: smagile.co $(date -u +%Y-%m-%d)"
+          DESC="Build or tests failed on commit ${GITHUB_SHA::8} by ${GITHUB_ACTOR}. Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Check gh run view ${GITHUB_RUN_ID} --log-failed for details."
+          BODY=$(node -e "console.log(JSON.stringify({title:process.argv[1],description:'<p>'+process.argv[2]+'</p>',column_id:92,workflow_id:6,lane_id:6,color:'cc4444'}))" "$TITLE" "$DESC")
+          curl -s -X POST \
+            -H "apikey: ${BMAP_KEY}" \
+            -H "Content-Type: application/json" \
+            "https://smagile.kanbanize.com/api/v2/cards" \
+            -d "$BODY" > /dev/null && echo "Board card created" || echo "Failed to create board card"
