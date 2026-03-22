@@ -113,6 +113,9 @@ const CACHE_TTL_AI = 10 * 60 * 1000;           // 10 minutes
 const CACHE_TTL_FUNNEL = 15 * 60 * 1000;       // 15 minutes
 const CACHE_TTL_PIPELINE = 10 * 60 * 1000;     // 10 minutes
 
+/** Track schema errors we've already warned about to avoid log spam. */
+const _schemaWarningsLogged = new Set<string>();
+
 // -------------------------------------------------------------------
 // Code Health
 // -------------------------------------------------------------------
@@ -160,6 +163,25 @@ async function fetchCodeHealth(project: string): Promise<CodeHealthMetrics | nul
     .limit(30);
 
   if (error) {
+    const isSchemaError =
+      error.message.includes('does not exist') ||
+      error.message.includes('relation') ||
+      error.code === '42703' || // undefined_column
+      error.code === '42P01';   // undefined_table
+
+    if (isSchemaError) {
+      // Log once per column/table issue, then cache empty result to stop spam
+      const warningKey = `code_health:${error.message}`;
+      if (!_schemaWarningsLogged.has(warningKey)) {
+        console.warn(`[Metrics] code_health_snapshots schema not ready: ${error.message}. Run migration 034_code_health_project.sql. Suppressing further warnings.`);
+        _schemaWarningsLogged.add(warningKey);
+      }
+      // Cache empty result so we don't retry on every page load
+      const empty: CodeHealthMetrics = { latest: null, previous: null, history: [] };
+      cacheSet(cacheKey, empty, CACHE_TTL_CODE_HEALTH);
+      return empty;
+    }
+
     console.error(`[Metrics] code_health_snapshots query failed (${project}):`, error.message);
     return null;
   }
