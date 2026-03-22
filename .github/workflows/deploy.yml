@@ -60,7 +60,7 @@ jobs:
             User ${{ secrets.PI_SSH_USER }}
             IdentityFile ~/.ssh/id_ed25519
             StrictHostKeyChecking no
-            ProxyCommand cloudflared access ssh --hostname %h
+            ProxyCommand cloudflared access ssh --hostname %h --id ${{ secrets.CF_ACCESS_CLIENT_ID }} --secret ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           EOF
 
       - name: Deploy to Pi
