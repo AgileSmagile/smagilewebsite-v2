@@ -6,13 +6,13 @@ interface Props {
 const { currentPath } = Astro.props;
 
 const navItems = [
-  { label: 'Dashboard', href: '/admin/', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-  { label: 'Projects & Agents', href: '/admin/projects/', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
-  { label: 'Leads', href: '/admin/leads/', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
-  { label: 'Content', href: '/admin/content/', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
-  { label: 'Finance', href: '/admin/finance/', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { label: 'Courses', href: '/admin/courses/', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
-  { label: 'Scout', href: '/admin/scout/', icon: 'M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z' },
+  { id: 'dashboard', label: 'Dashboard', href: '/admin/', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+  { id: 'projects', label: 'Projects & Agents', href: '/admin/projects/', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
+  { id: 'leads', label: 'Leads', href: '/admin/leads/', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+  { id: 'content', label: 'Content', href: '/admin/content/', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+  { id: 'finance', label: 'Finance', href: '/admin/finance/', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { id: 'courses', label: 'Courses', href: '/admin/courses/', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
+  { id: 'scout', label: 'Scout', href: '/admin/scout/', icon: 'M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z' },
 ];
 
 function isActive(href: string): boolean {
@@ -22,13 +22,16 @@ function isActive(href: string): boolean {
   }
   return currentPath.startsWith(href);
 }
+
+const defaultOrder = navItems.map(i => i.id);
 ---
 
+<!-- Desktop sidebar -->
 <aside id="admin-sidebar" class="hidden md:flex flex-col w-14 hover:w-52 transition-all duration-200 bg-grey-900 border-r border-grey-700 overflow-hidden group/sidebar" data-collapsed="true">
   <nav class="flex-1 py-4" aria-label="Admin sidebar">
-    <ul class="space-y-1 px-2">
+    <ul id="desktop-nav-list" class="space-y-1 px-2" data-default-order={JSON.stringify(defaultOrder)}>
       {navItems.map((item) => (
-        <li>
+        <li data-nav-id={item.id} class="nav-item group/item relative">
           <a
             href={item.href}
             class:list={[
@@ -39,14 +42,52 @@ function isActive(href: string): boolean {
             ]}
             title={item.label}
           >
-            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <svg class="w-5 h-5 shrink-0 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
             </svg>
-            <span class="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200">{item.label}</span>
+            <span class="flex-1 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200">{item.label}</span>
           </a>
+          {/* Pin toggle — visible on hover when sidebar expanded */}
+          <button
+            class="pin-btn absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover/sidebar:group-hover/item:opacity-100 transition-opacity duration-150 text-grey-500 hover:text-secondary"
+            data-nav-id={item.id}
+            aria-label={`Pin ${item.label}`}
+            title="Pin/unpin"
+          >
+            <svg class="w-3.5 h-3.5 pin-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+          {/* Drag handle — visible only in edit mode */}
+          <span class="drag-handle absolute left-0 top-1/2 -translate-y-1/2 p-1 cursor-grab hidden text-grey-500" aria-hidden="true">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+            </svg>
+          </span>
         </li>
       ))}
     </ul>
+    {/* Edit order controls */}
+    <div class="px-2 mt-3 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200">
+      <button
+        id="desktop-edit-order-btn"
+        class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-grey-500 hover:text-warm-300 hover:bg-grey-800 transition-colors whitespace-nowrap"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z M7 11h10M7 15h4" />
+        </svg>
+        <span>Edit order</span>
+      </button>
+      <button
+        id="desktop-save-order-btn"
+        class="hidden w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-primary hover:text-secondary hover:bg-grey-800 transition-colors whitespace-nowrap"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        <span>Save order</span>
+      </button>
+    </div>
   </nav>
 </aside>
 
@@ -62,9 +103,9 @@ function isActive(href: string): boolean {
     </button>
   </div>
   <nav class="py-4 px-3">
-    <ul class="space-y-1">
+    <ul id="mobile-nav-list" class="space-y-1">
       {navItems.map((item) => (
-        <li>
+        <li data-nav-id={item.id} class="nav-item group/item relative">
           <a
             href={item.href}
             class:list={[
@@ -74,18 +115,287 @@ function isActive(href: string): boolean {
                 : 'text-warm-300 hover:bg-grey-800 hover:text-secondary',
             ]}
           >
-            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <svg class="w-5 h-5 shrink-0 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
             </svg>
-            <span>{item.label}</span>
+            <span class="flex-1">{item.label}</span>
           </a>
+          <button
+            class="pin-btn absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 text-grey-500 hover:text-secondary"
+            data-nav-id={item.id}
+            aria-label={`Pin ${item.label}`}
+            title="Pin/unpin"
+          >
+            <svg class="w-3.5 h-3.5 pin-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+          <span class="drag-handle absolute left-0 top-1/2 -translate-y-1/2 p-1 cursor-grab hidden text-grey-500" aria-hidden="true">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+            </svg>
+          </span>
         </li>
       ))}
     </ul>
+    <div class="mt-3">
+      <button
+        id="mobile-edit-order-btn"
+        class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-grey-500 hover:text-warm-300 hover:bg-grey-800 transition-colors"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z M7 11h10M7 15h4" />
+        </svg>
+        <span>Edit order</span>
+      </button>
+      <button
+        id="mobile-save-order-btn"
+        class="hidden w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-primary hover:text-secondary hover:bg-grey-800 transition-colors"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        <span>Save order</span>
+      </button>
+    </div>
   </nav>
 </aside>
 
 <script>
+  const STORAGE_ORDER_KEY = 'admin-sidebar-order';
+  const STORAGE_PINNED_KEY = 'admin-sidebar-pinned';
+  const ALWAYS_PINNED = 'dashboard';
+
+  function getDefaultOrder(): string[] {
+    const list = document.getElementById('desktop-nav-list');
+    if (!list) return [];
+    try {
+      return JSON.parse(list.dataset.defaultOrder || '[]');
+    } catch { return []; }
+  }
+
+  // Read persisted state
+  function getOrder(): string[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_ORDER_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch { /* ignore */ }
+    return getDefaultOrder();
+  }
+
+  function getPinned(): Set<string> {
+    try {
+      const raw = localStorage.getItem(STORAGE_PINNED_KEY);
+      if (raw) {
+        const set = new Set<string>(JSON.parse(raw));
+        set.add(ALWAYS_PINNED);
+        return set;
+      }
+    } catch { /* ignore */ }
+    return new Set<string>(getDefaultOrder());
+  }
+
+  function saveOrder(order: string[]) {
+    localStorage.setItem(STORAGE_ORDER_KEY, JSON.stringify(order));
+  }
+
+  function savePinned(pinned: Set<string>) {
+    localStorage.setItem(STORAGE_PINNED_KEY, JSON.stringify([...pinned]));
+  }
+
+  // Apply order and pin state to a nav list
+  function applyState(list: HTMLElement, order: string[], pinned: Set<string>, editMode: boolean) {
+    const items = Array.from(list.querySelectorAll<HTMLLIElement>('li[data-nav-id]'));
+    const itemMap = new Map<string, HTMLLIElement>();
+    items.forEach(el => itemMap.set(el.dataset.navId!, el));
+
+    // Sort by order array, appending any items not in the order at the end
+    const sorted: HTMLLIElement[] = [];
+    for (const id of order) {
+      const el = itemMap.get(id);
+      if (el) sorted.push(el);
+    }
+    // Add any items not in the saved order
+    items.forEach(el => {
+      if (!sorted.includes(el)) sorted.push(el);
+    });
+
+    // Reorder DOM
+    sorted.forEach(el => list.appendChild(el));
+
+    // Apply pin visibility
+    sorted.forEach(el => {
+      const id = el.dataset.navId!;
+      const isPinned = pinned.has(id);
+
+      if (editMode) {
+        el.classList.remove('hidden', 'sidebar-unpinned');
+        el.style.opacity = isPinned ? '1' : '0.5';
+      } else if (!isPinned) {
+        el.classList.add('sidebar-unpinned');
+        el.style.opacity = '';
+      } else {
+        el.classList.remove('sidebar-unpinned');
+        el.style.opacity = '';
+      }
+
+      // Update pin icon fill
+      const pinIcon = el.querySelector('.pin-icon');
+      if (pinIcon) {
+        if (isPinned) {
+          pinIcon.setAttribute('fill', 'currentColor');
+        } else {
+          pinIcon.setAttribute('fill', 'none');
+        }
+      }
+
+      // Disable pin button for always-pinned items
+      const pinBtn = el.querySelector('.pin-btn') as HTMLButtonElement | null;
+      if (pinBtn && id === ALWAYS_PINNED) {
+        pinBtn.style.display = 'none';
+      }
+    });
+  }
+
+  // Set up drag and drop for a list
+  function setupDragDrop(list: HTMLElement, onReorder: (newOrder: string[]) => void) {
+    let draggedEl: HTMLLIElement | null = null;
+
+    list.addEventListener('dragstart', (e) => {
+      const target = (e.target as HTMLElement).closest('li[data-nav-id]') as HTMLLIElement | null;
+      if (!target) return;
+      draggedEl = target;
+      target.classList.add('opacity-50');
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', target.dataset.navId!);
+      }
+    });
+
+    list.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+
+      const target = (e.target as HTMLElement).closest('li[data-nav-id]') as HTMLLIElement | null;
+      if (!target || !draggedEl || target === draggedEl) return;
+
+      const rect = target.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        list.insertBefore(draggedEl, target);
+      } else {
+        list.insertBefore(draggedEl, target.nextSibling);
+      }
+    });
+
+    list.addEventListener('dragend', (e) => {
+      if (draggedEl) {
+        draggedEl.classList.remove('opacity-50');
+        draggedEl = null;
+      }
+      // Read new order from DOM
+      const items = Array.from(list.querySelectorAll<HTMLLIElement>('li[data-nav-id]'));
+      const newOrder = items.map(el => el.dataset.navId!);
+      onReorder(newOrder);
+    });
+
+    list.addEventListener('drop', (e) => {
+      e.preventDefault();
+    });
+  }
+
+  // Initialise both desktop and mobile sidebars
+  function initSidebar(
+    listId: string,
+    editBtnId: string,
+    saveBtnId: string
+  ) {
+    const list = document.getElementById(listId);
+    const editBtn = document.getElementById(editBtnId);
+    const saveBtn = document.getElementById(saveBtnId);
+    if (!list || !editBtn || !saveBtn) return;
+
+    let order = getOrder();
+    let pinned = getPinned();
+    let editMode = false;
+
+    // Initial render
+    applyState(list, order, pinned, false);
+
+    // Pin toggle clicks
+    list.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.pin-btn') as HTMLElement | null;
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const id = btn.dataset.navId;
+      if (!id || id === ALWAYS_PINNED) return;
+
+      if (pinned.has(id)) {
+        pinned.delete(id);
+      } else {
+        pinned.add(id);
+      }
+      savePinned(pinned);
+      applyState(list, order, pinned, editMode);
+      // Sync to the other sidebar
+      syncOtherList(listId, order, pinned, editMode);
+    });
+
+    // Edit mode toggle
+    editBtn.addEventListener('click', () => {
+      editMode = true;
+      editBtn.classList.add('hidden');
+      saveBtn.classList.remove('hidden');
+      // Make items draggable, show drag handles, show all items
+      const items = list.querySelectorAll<HTMLLIElement>('li[data-nav-id]');
+      items.forEach(el => {
+        el.setAttribute('draggable', 'true');
+        el.querySelector('.drag-handle')?.classList.remove('hidden');
+        // Hide pin buttons in edit mode, show drag handles instead
+        const pinBtn = el.querySelector('.pin-btn') as HTMLElement | null;
+        if (pinBtn) pinBtn.style.visibility = 'hidden';
+      });
+      applyState(list, order, pinned, true);
+    });
+
+    // Save
+    saveBtn.addEventListener('click', () => {
+      editMode = false;
+      saveBtn.classList.add('hidden');
+      editBtn.classList.remove('hidden');
+      // Read current DOM order
+      const items = Array.from(list.querySelectorAll<HTMLLIElement>('li[data-nav-id]'));
+      order = items.map(el => el.dataset.navId!);
+      saveOrder(order);
+      // Remove draggable, hide drag handles
+      items.forEach(el => {
+        el.removeAttribute('draggable');
+        el.querySelector('.drag-handle')?.classList.add('hidden');
+        const pinBtn = el.querySelector('.pin-btn') as HTMLElement | null;
+        if (pinBtn) pinBtn.style.visibility = '';
+      });
+      applyState(list, order, pinned, false);
+      // Sync to the other sidebar
+      syncOtherList(listId, order, pinned, false);
+    });
+
+    // Set up drag and drop
+    setupDragDrop(list, (newOrder) => {
+      order = newOrder;
+    });
+  }
+
+  function syncOtherList(sourceListId: string, order: string[], pinned: Set<string>, editMode: boolean) {
+    const otherId = sourceListId === 'desktop-nav-list' ? 'mobile-nav-list' : 'desktop-nav-list';
+    const otherList = document.getElementById(otherId);
+    if (otherList) {
+      applyState(otherList, order, pinned, editMode);
+    }
+  }
+
+  // Mobile menu open/close
   const overlay = document.getElementById('mobile-sidebar-overlay');
   const sidebar = document.getElementById('mobile-sidebar');
   const closeBtn = document.getElementById('close-mobile-sidebar');
@@ -104,4 +414,38 @@ function isActive(href: string): boolean {
   openBtn?.addEventListener('click', openMenu);
   closeBtn?.addEventListener('click', closeMenu);
   overlay?.addEventListener('click', closeMenu);
+
+  // Initialise both sidebars
+  initSidebar('desktop-nav-list', 'desktop-edit-order-btn', 'desktop-save-order-btn');
+  initSidebar('mobile-nav-list', 'mobile-edit-order-btn', 'mobile-save-order-btn');
 </script>
+
+<style>
+  /* Unpinned items: hidden by default, visible when sidebar hovered or in edit mode */
+  #admin-sidebar .sidebar-unpinned {
+    display: none;
+  }
+  #admin-sidebar:hover .sidebar-unpinned {
+    display: list-item;
+    opacity: 0.45;
+  }
+
+  /* Mobile: unpinned items always hidden unless in edit mode */
+  #mobile-sidebar .sidebar-unpinned {
+    display: none;
+  }
+
+  /* Drag feedback */
+  li[data-nav-id][draggable="true"] {
+    cursor: grab;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  li[data-nav-id][draggable="true"]:active {
+    cursor: grabbing;
+  }
+
+  /* Subtle border on drag target */
+  li[data-nav-id].drag-over {
+    border-top: 2px solid var(--color-secondary);
+  }
+</style>
