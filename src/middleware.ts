@@ -65,8 +65,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     ) {
       const origin = context.request.headers.get('origin');
       const host = context.request.headers.get('host');
-      if (origin && !origin.endsWith(host || '')) {
-        return new Response('Invalid origin', { status: 403 });
+      if (origin && host) {
+        // Compare hostnames only (strip port from host, strip scheme from origin)
+        const originHost = new URL(origin).hostname;
+        const requestHost = host.split(':')[0];
+        if (originHost !== requestHost) {
+          return new Response('Invalid origin', { status: 403 });
+        }
       }
     }
   }
