@@ -8,6 +8,7 @@
 # Usage:
 #   bin/deploy           -- full deploy (pull, build, restart)
 #   bin/deploy --dry-run -- connect and show what would happen without changing anything
+#   bin/deploy --status  -- show tunnel, Pi commit, local commit, and drift
 #
 # Environment variables (required):
 #   CF_ACCESS_CLIENT_ID      -- Cloudflare Access service token ID
@@ -26,9 +27,11 @@ SONNET_AGENT_ENV="C:/Users/James/Projects/sonnet-agent/.env"
 CLOUDFLARED="/c/Program Files (x86)/cloudflared/cloudflared.exe"
 
 DRY_RUN=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-  DRY_RUN=true
-fi
+STATUS=false
+case "${1:-}" in
+  --dry-run) DRY_RUN=true ;;
+  --status)  STATUS=true ;;
+esac
 
 # -- Resolve Cloudflare service tokens ------------------------------------
 if [[ -z "${CF_ACCESS_CLIENT_ID:-}" || -z "${CF_ACCESS_CLIENT_SECRET:-}" ]]; then
@@ -62,6 +65,42 @@ if $DRY_RUN; then
   log "Dry run -- connecting to verify SSH access..."
   remote bash -c "'echo Connected to \$(hostname) as \$(whoami) && cd $REMOTE_DIR && git status --short'"
   log "Dry run complete. No changes made."
+  exit 0
+fi
+
+# -- Status mode -----------------------------------------------------------
+if $STATUS; then
+  slog() { echo "[status] $*"; }
+
+  # 1. Tunnel connectivity
+  if remote true 2>/dev/null; then
+    slog "Tunnel: connected"
+  else
+    slog "Tunnel: FAILED"
+    exit 1
+  fi
+
+  # 2. Pi commit (hash + subject)
+  PI_INFO=$(remote bash -c "'cd $REMOTE_DIR && git log -1 --format=\"%h %s\"'")
+  PI_HASH=$(echo "$PI_INFO" | awk '{print $1}')
+  PI_MSG=${PI_INFO#"$PI_HASH "}
+
+  # 3. Local HEAD
+  LOCAL_INFO=$(git log -1 --format="%h %s")
+  LOCAL_HASH=$(echo "$LOCAL_INFO" | awk '{print $1}')
+  LOCAL_MSG=${LOCAL_INFO#"$LOCAL_HASH "}
+
+  # 4. Drift — count commits on local HEAD that are not on Pi
+  PI_FULL=$(remote bash -c "'cd $REMOTE_DIR && git rev-parse HEAD'")
+  BEHIND=$(git rev-list --count "$PI_FULL..HEAD" 2>/dev/null || echo "?")
+
+  if [[ "$BEHIND" == "0" ]]; then
+    slog "Pi: $PI_HASH $PI_MSG (up to date)"
+  else
+    slog "Pi: $PI_HASH $PI_MSG ($BEHIND commits behind)"
+  fi
+  slog "Local: $LOCAL_HASH $LOCAL_MSG"
+
   exit 0
 fi
 
