@@ -53,16 +53,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.PI_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-
-          cat > ~/.ssh/config <<'SSHEOF'
-          Host pi
-            HostName ssh.smagile.co
-            IdentityFile ~/.ssh/id_ed25519
-            StrictHostKeyChecking no
-            ProxyCommand cloudflared access ssh --hostname %h
-          SSHEOF
-          sed -i "s/^          //" ~/.ssh/config
-          echo "  User ${{ secrets.PI_SSH_USER }}" >> ~/.ssh/config
+          printf "Host pi\n  HostName ssh.smagile.co\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking no\n  ProxyCommand cloudflared access ssh --hostname %%h\n" "${{ secrets.PI_SSH_USER }}" > ~/.ssh/config
 
       - name: Deploy to Pi
         env:
