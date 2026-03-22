@@ -54,16 +54,20 @@ jobs:
           echo "${{ secrets.PI_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          cat >> ~/.ssh/config <<EOF
+          cat > ~/.ssh/config <<'SSHEOF'
           Host pi
             HostName ssh.smagile.co
-            User ${{ secrets.PI_SSH_USER }}
             IdentityFile ~/.ssh/id_ed25519
             StrictHostKeyChecking no
-            ProxyCommand cloudflared access ssh --hostname %h --id ${{ secrets.CF_ACCESS_CLIENT_ID }} --secret ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          EOF
+            ProxyCommand cloudflared access ssh --hostname %h
+          SSHEOF
+          sed -i "s/^          //" ~/.ssh/config
+          echo "  User ${{ secrets.PI_SSH_USER }}" >> ~/.ssh/config
 
       - name: Deploy to Pi
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           # Transfer artefact
           scp deploy.tar.gz pi:${{ env.DEPLOY_DIR }}/deploy.tar.gz
