@@ -1,23 +1,17 @@
-name: Build and Deploy
+name: Build and Test
 
 on:
   push:
     branches: [main, master, develop]
 
 concurrency:
-  group: deploy-${{ github.ref_name }}
+  group: build-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'production' || 'staging' }}
     timeout-minutes: 15
-
-    env:
-      DEPLOY_DIR: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && '/home/smagile-server/smagilewebsite-v2' || '/home/smagile-server/smagilewebsite-v2-staging' }}
-      SERVICE_NAME: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'smagile-web' || 'smagile-web-staging' }}
-      HEALTH_URL: ${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'http://localhost:4321' || 'http://localhost:4322' }}
 
     steps:
       - name: Checkout
@@ -35,77 +29,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Package artefact
-        run: |
-          tar -czf deploy.tar.gz \
-            dist/ \
-            package.json \
-            package-lock.json
-
-      - name: Install cloudflared
-        run: |
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb \
-            -o cloudflared.deb
-          sudo dpkg -i cloudflared.deb
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PI_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf "Host pi\n  HostName ssh.smagile.co\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking no\n  ProxyCommand env TUNNEL_SERVICE_TOKEN_ID=%s TUNNEL_SERVICE_TOKEN_SECRET=%s cloudflared access ssh --hostname %%h\n" \
-            "${{ secrets.PI_SSH_USER }}" \
-            "${{ secrets.CF_ACCESS_CLIENT_ID }}" \
-            "${{ secrets.CF_ACCESS_CLIENT_SECRET }}" > ~/.ssh/config
-          chmod 600 ~/.ssh/config
-
-      - name: Deploy to Pi
-        run: |
-          # Transfer artefact
-          scp deploy.tar.gz pi:${{ env.DEPLOY_DIR }}/deploy.tar.gz
-
-          # Extract, install production deps, restart service
-          ssh pi bash -s <<'DEPLOY'
-            set -euo pipefail
-            cd ${{ env.DEPLOY_DIR }}
-
-            # Back up current dist for rollback
-            if [ -d dist ]; then
-              rm -rf dist.bak
-              mv dist dist.bak
-            fi
-
-            # Extract new build
-            tar -xzf deploy.tar.gz
-            rm deploy.tar.gz
-
-            # Install production dependencies only
-            npm ci --omit=dev
-
-            # Restart the service
-            sudo systemctl restart ${{ env.SERVICE_NAME }}
-
-            # Wait for service to come up
-            sleep 3
-
-            # Health check
-            if curl -fsS -o /dev/null ${{ env.HEALTH_URL }}; then
-              echo "Health check passed"
-            else
-              echo "Health check FAILED - rolling back"
-              rm -rf dist
-              if [ -d dist.bak ]; then
-                mv dist.bak dist
-                sudo systemctl restart ${{ env.SERVICE_NAME }}
-              fi
-              exit 1
-            fi
-          DEPLOY
-
-      - name: Deploy summary
-        if: success()
-        run: |
-          ENV_LABEL="${{ contains(fromJSON('["main","master"]'), github.ref_name) && 'Production (smagile.co)' || 'Staging (staging.smagile.co)' }}"
-          echo "### Deployed to ${ENV_LABEL}" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+      - name: Run tests
+        run: npm run test:run
