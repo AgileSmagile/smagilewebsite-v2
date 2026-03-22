@@ -2,6 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
+import OpportunityStatusScript from '../../../components/admin/OpportunityStatusScript.astro';
 import { getOpportunities, getOpportunitySummary, getSourceCounts } from '../../../lib/admin/opportunities';
 import { formatRate, formatDate, scoreColour, scoreBg } from '../../../lib/admin/format';
 import { buildFilterUrl } from '../../../lib/admin/filter-url';
@@ -16,7 +17,7 @@ const minRate = parseInt(Astro.url.searchParams.get('min_rate') || '0', 10) || 0
 const sortBy = Astro.url.searchParams.get('sort') || 'score';
 const hideSeen = Astro.url.searchParams.get('hide_seen') === '1';
 
-const opportunities = await getOpportunities({
+const rawOpportunities = await getOpportunities({
   status: statusFilter,
   source: sourceFilter,
   minScore,
@@ -24,6 +25,12 @@ const opportunities = await getOpportunities({
   sort: sortBy,
   hideSeen,
 });
+
+// Demote applied/seen roles to the bottom while preserving sort order within each group
+const activeOpps = rawOpportunities.filter((o) => o.status !== 'applied' && o.status !== 'seen');
+const demotedOpps = rawOpportunities.filter((o) => o.status === 'applied' || o.status === 'seen');
+const opportunities = [...activeOpps, ...demotedOpps];
+
 const summary = await getOpportunitySummary();
 const sourceCounts = await getSourceCounts();
 
@@ -283,6 +290,14 @@ const sortOptions = [
                       >
                         Applied
                       </button>
+                      <button
+                        data-opp-id={opp.id}
+                        data-action="removed"
+                        class="opp-remove-btn px-2 py-1 text-xs font-medium text-red-400/70 bg-grey-800 rounded border border-grey-700 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-colors"
+                        title="Remove from results"
+                      >
+                        &times;
+                      </button>
                     </>
                   )}
                   {opp.businessmap_card_id && (
@@ -310,64 +325,66 @@ const sortOptions = [
   </p>
 </AdminLayout>
 
+<OpportunityStatusScript />
+
 <script>
-  document.querySelectorAll<HTMLButtonElement>('.opp-status-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const oppId = btn.dataset.oppId;
-      const action = btn.dataset.action;
-      if (!oppId || !action) return;
+  function initRemoveButtons() {
+    document.querySelectorAll<HTMLButtonElement>('.opp-remove-btn').forEach((btn) => {
+      if (btn.dataset.bound === '1') return;
+      btn.dataset.bound = '1';
 
-      btn.disabled = true;
-      btn.textContent = 'Updating...';
+      btn.addEventListener('click', async () => {
+        const oppId = btn.dataset.oppId;
+        if (!oppId) return;
+        if (btn.disabled) return;
 
-      try {
-        const res = await fetch(`/admin/api/opportunities/${oppId}/status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: action }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Request failed' }));
-          throw new Error(err.error || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
         const row = btn.closest('tr');
         if (!row) return;
 
-        if (action === 'applied') {
-          row.classList.add('opacity-50');
+        btn.disabled = true;
+        row.style.transition = 'opacity 0.3s, max-height 0.3s';
+        row.style.opacity = '0';
+
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000);
+
+          const res = await fetch(`/admin/api/opportunities/${oppId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'removed' }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeout);
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+
+          setTimeout(() => row.remove(), 300);
+        } catch (err) {
+          row.style.opacity = '1';
+          btn.disabled = false;
+          console.error('Remove failed:', err);
+
           const cell = btn.closest('td');
           if (cell) {
-            cell.querySelectorAll('.opp-status-btn').forEach((b) => b.remove());
-            const badge = document.createElement('span');
-            badge.className = 'px-2 py-0.5 text-xs font-medium rounded-full bg-secondary/20 text-secondary';
-            badge.textContent = 'Applied';
-            cell.appendChild(badge);
-
-            if (data.businessmap_card_id) {
-              const link = document.createElement('a');
-              link.href = `https://smagile.kanbanize.com/ctrl_board/5/cards/${data.businessmap_card_id}/details`;
-              link.target = '_blank';
-              link.rel = 'noopener';
-              link.className = 'px-2 py-0.5 text-xs font-medium rounded bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors';
-              link.title = 'View on Businessmap';
-              link.textContent = `#${data.businessmap_card_id}`;
-              cell.appendChild(link);
-            }
+            const toast = document.createElement('div');
+            toast.className = 'absolute mt-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30 whitespace-nowrap z-10';
+            toast.textContent = 'Failed to remove';
+            cell.style.position = 'relative';
+            cell.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
           }
-        } else if (action === 'seen') {
-          const dot = row.querySelector('.bg-blue-400');
-          if (dot) dot.remove();
-          btn.remove();
         }
-      } catch (err) {
-        console.error('Status update failed:', err);
-        btn.disabled = false;
-        btn.textContent = action === 'applied' ? 'Applied' : 'Mark Seen';
-        alert(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
+      });
     });
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRemoveButtons);
+  } else {
+    initRemoveButtons();
+  }
 </script>

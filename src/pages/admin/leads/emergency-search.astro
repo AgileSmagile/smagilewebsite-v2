@@ -13,7 +13,7 @@ export const prerender = false;
 // Read filter params
 const statusFilter = Astro.url.searchParams.get('status') || 'all';
 const recencyParam = Astro.url.searchParams.get('recency') || '7';
-const recencyDays = recencyParam === 'all' ? undefined : parseInt(recencyParam, 10) || 7;
+const recencyDays = recencyParam === 'all' ? undefined : (Number.isNaN(parseInt(recencyParam, 10)) ? 7 : parseInt(recencyParam, 10));
 
 const opportunities = await getEmergencyOpportunities(statusFilter, recencyDays);
 const summary = await getEmergencyOpportunitySummary(recencyDays);
@@ -36,7 +36,12 @@ const scoredOpportunities: ScoredOpportunity[] = opportunities.map((opp) => {
 });
 
 // Re-sort by profile match score when available, falling back to trawler score
+// Then demote applied/seen roles to the bottom
 scoredOpportunities.sort((a, b) => {
+  const aDemoted = a.status === 'applied' || a.status === 'seen';
+  const bDemoted = b.status === 'applied' || b.status === 'seen';
+  if (aDemoted !== bDemoted) return aDemoted ? 1 : -1;
+
   const scoreA = a.profileMatch?.score ?? a.match_score ?? 0;
   const scoreB = b.profileMatch?.score ?? b.match_score ?? 0;
   return scoreB - scoreA;
@@ -59,10 +64,11 @@ const statusFilters = [
 ];
 
 const recencyOptions = [
-  { value: '7', label: '7 days' },
-  { value: '14', label: '14 days' },
-  { value: '30', label: '30 days' },
-  { value: 'all', label: 'All time' },
+  { value: '0', label: 'Today' },
+  { value: '1', label: 'Past 24hrs' },
+  { value: '3', label: 'Past 3 days' },
+  { value: '7', label: 'Past 7 days' },
+  { value: 'all', label: 'All open' },
 ];
 
 const emergencyDefaults: Record<string, string> = { status: 'all', recency: '7' };
@@ -94,18 +100,23 @@ function buildUrl(params: Record<string, string>): string {
   </div>
 
   <!-- Info banner -->
-  <div class="mb-6 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-    <p class="text-sm text-amber-300">
-      {profile
-        ? 'Matching against your Mosaic CV profile. Scores reflect skill and role overlap with each listing.'
-        : 'No Mosaic CV profile found. Showing trawler match scores only. Upload your CV to Mosaic for personalised matching.'
-      }
-    </p>
-  </div>
+  {profile ? (
+    <div class="mb-6 p-3 rounded-lg bg-secondary/10 border border-secondary/30">
+      <p class="text-sm text-secondary">
+        Matching against your Mosaic CV profile. Scores reflect skill and role overlap with each listing.
+      </p>
+    </div>
+  ) : (
+    <div class="mb-6 p-3 rounded-lg bg-grey-800 border border-grey-700">
+      <p class="text-sm text-warm-300">
+        Scores are based on the job trawler's keyword matching. Connect your Mosaic CV profile for personalised skill and role matching.
+      </p>
+    </div>
+  )}
 
   <!-- KPI row -->
   <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
-    <StatCard label="Total Active" value={String(summary.total)} subtitle={recencyDays ? `Last ${recencyDays} days` : 'All time'} />
+    <StatCard label="Total Active" value={String(summary.total)} subtitle={recencyDays === undefined ? 'All open' : recencyDays === 0 ? 'Today' : `Last ${recencyDays} days`} />
     <StatCard label="New" value={String(summary.new)} subtitle="Not yet reviewed" />
     <StatCard label="High Match" value={String(highMatchCount)} subtitle="60%+ compatibility" trend={highMatchCount > 0 ? 'up' : undefined} />
     <StatCard label="Applied" value={String(summary.applied)} subtitle="In your pipeline" />
@@ -325,7 +336,7 @@ function buildUrl(params: Record<string, string>): string {
 
   <p class="text-xs text-grey-500 text-center mt-6">
     Data sourced from Reed.co.uk. Refreshed twice daily.
-    {recencyDays ? ` Showing last ${recencyDays} days.` : ' Showing all available listings.'}
+    {recencyDays === undefined ? ' Showing all open listings.' : recencyDays === 0 ? ' Showing today only.' : ` Showing last ${recencyDays} days.`}
   </p>
 </AdminLayout>
 

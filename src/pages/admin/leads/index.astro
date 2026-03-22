@@ -1,50 +1,9 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
-import StatCard from '../../../components/admin/StatCard.astro';
+import EmptyState from '../../../components/admin/EmptyState.astro';
 
 export const prerender = false;
-
-const stages = [
-  { label: 'New', count: 8, colour: 'bg-blue-500' },
-  { label: 'Contacted', count: 7, colour: 'bg-amber-500' },
-  { label: 'Qualified', count: 4, colour: 'bg-purple-500' },
-  { label: 'Proposal Sent', count: 2, colour: 'bg-secondary' },
-  { label: 'Won', count: 2, colour: 'bg-green-500' },
-];
-
-const totalLeads = stages.reduce((sum, s) => sum + s.count, 0);
-
-const leads = [
-  { name: 'Sarah Mitchell', company: 'Barclays', source: 'LinkedIn', status: 'Qualified', lastContact: '12 Mar 2026' },
-  { name: 'David Chen', company: 'Nationwide Building Society', source: 'Referral', status: 'Contacted', lastContact: '11 Mar 2026' },
-  { name: 'Priya Sharma', company: 'Rolls-Royce', source: 'LinkedIn', status: 'New', lastContact: '10 Mar 2026' },
-  { name: 'Tom Williams', company: 'Deloitte', source: 'Job Board', status: 'Proposal Sent', lastContact: '9 Mar 2026' },
-  { name: 'Rachel Adams', company: 'DVLA', source: 'LinkedIn', status: 'Won', lastContact: '7 Mar 2026' },
-  { name: 'James Okonkwo', company: 'Sky', source: 'Referral', status: 'New', lastContact: '6 Mar 2026' },
-  { name: 'Emma Clarke', company: 'Vodafone', source: 'LinkedIn', status: 'Contacted', lastContact: '5 Mar 2026' },
-  { name: 'Michael Byrne', company: 'AstraZeneca', source: 'Job Board', status: 'Qualified', lastContact: '4 Mar 2026' },
-];
-
-const statusColours: Record<string, string> = {
-  'New': 'bg-blue-500/20 text-blue-400',
-  'Contacted': 'bg-amber-500/20 text-amber-400',
-  'Qualified': 'bg-purple-500/20 text-purple-400',
-  'Proposal Sent': 'bg-secondary/20 text-secondary',
-  'Won': 'bg-green-500/20 text-green-400',
-};
-
-const sourceIcons: Record<string, string> = {
-  'LinkedIn': 'M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z',
-  'Referral': 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-  'Job Board': 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-};
-
-const templates = [
-  { name: 'Initial LinkedIn connection request', description: 'Personalised connection message for new prospects' },
-  { name: 'Follow-up after no response (7 days)', description: 'Gentle nudge with added value or insight' },
-  { name: 'Discovery call invitation', description: 'Propose a short call to explore fit' },
-];
 ---
 
 <AdminLayout title="Lead Gen & Outreach">
@@ -72,9 +31,6 @@ const templates = [
           </svg>
           Partner Network
         </a>
-        <a href="/admin/leads/emergency-search" class="px-4 py-2 text-sm font-medium text-amber-300 bg-amber-500/10 rounded-lg border border-amber-500/30 hover:bg-amber-500/20 transition-colors">
-          Emergency Search
-        </a>
         <a href="/admin/leads/opportunities" class="px-4 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-secondary/80 transition-colors">
           Job Opportunities &rarr;
         </a>
@@ -82,117 +38,21 @@ const templates = [
     </div>
   </div>
 
-  <!-- KPI row -->
-  <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
-    <StatCard label="Pipeline Total" value="23" subtitle="Across all stages" />
-    <StatCard label="Contacted This Week" value="7" subtitle="Up from 5 last week" trend="up" />
-    <StatCard label="Response Rate" value="31%" subtitle="Industry avg ~20%" trend="up" />
-    <StatCard label="Qualified Leads" value="4" subtitle="Ready for proposals" />
-  </div>
-
-  <!-- Pipeline summary -->
-  <div class="mb-8 bg-grey-800 rounded-xl border border-grey-700 p-6">
-    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Pipeline Stages</h2>
-
-    <!-- Stage bar -->
-    <div class="flex rounded-lg overflow-hidden h-8 mb-4">
-      {stages.map((stage) => (
-        <div
-          class:list={[stage.colour, 'flex items-center justify-center text-xs font-medium text-white min-w-[2rem]']}
-          style={`width: ${(stage.count / totalLeads) * 100}%`}
-          title={`${stage.label}: ${stage.count}`}
-        >
-          {stage.count}
-        </div>
-      ))}
-    </div>
-
-    <!-- Stage labels -->
-    <div class="flex flex-wrap gap-4">
-      {stages.map((stage) => (
-        <div class="flex items-center gap-2">
-          <span class:list={['w-3 h-3 rounded-sm', stage.colour]}></span>
-          <span class="text-sm text-warm-300">{stage.label}</span>
-          <span class="text-sm font-semibold text-white">{stage.count}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-
-  <!-- Recent leads table -->
-  <div class="mb-8 bg-grey-800 rounded-xl border border-grey-700 p-6">
-    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Recent Leads</h2>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm text-left">
-        <thead>
-          <tr class="border-b border-grey-700">
-            <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider">Name</th>
-            <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider">Company</th>
-            <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden sm:table-cell">Source</th>
-            <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider">Status</th>
-            <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider hidden md:table-cell">Last Contact</th>
-            <th class="pb-3 text-xs font-medium text-warm-300 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leads.map((lead) => (
-            <tr class="border-b border-grey-700/50 last:border-0">
-              <td class="py-3 text-white font-medium">{lead.name}</td>
-              <td class="py-3 text-warm-300">{lead.company}</td>
-              <td class="py-3 hidden sm:table-cell">
-                <span class="inline-flex items-center gap-1.5 text-warm-300">
-                  <svg class="w-3.5 h-3.5 text-grey-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d={sourceIcons[lead.source]} />
-                  </svg>
-                  {lead.source}
-                </span>
-              </td>
-              <td class="py-3">
-                <span class:list={['inline-block px-2 py-0.5 rounded-full text-xs font-medium', statusColours[lead.status]]}>
-                  {lead.status}
-                </span>
-              </td>
-              <td class="py-3 text-grey-500 hidden md:table-cell">{lead.lastContact}</td>
-              <td class="py-3">
-                <button
-                  disabled
-                  class="px-3 py-1 text-xs font-medium text-grey-500 bg-grey-700 rounded border border-grey-600 cursor-not-allowed"
-                >
-                  View
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+  <!-- Pipeline -->
+  <div class="mb-8">
+    <EmptyState
+      heading="No leads in the pipeline yet"
+      message="Leads will appear here once the CRM integration is connected. Use the Outreach and Job Opportunities pages to start generating leads."
+      iconPath="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+    />
   </div>
 
   <!-- Outreach templates -->
-  <div class="mb-8 bg-grey-800 rounded-xl border border-grey-700 p-6">
-    <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Outreach Templates</h2>
-
-    <div class="space-y-3">
-      {templates.map((tpl) => (
-        <div class="flex items-center justify-between p-3 bg-grey-900/50 rounded-lg border border-grey-700/50">
-          <div>
-            <p class="text-sm font-medium text-white">{tpl.name}</p>
-            <p class="text-xs text-grey-500 mt-0.5">{tpl.description}</p>
-          </div>
-          <button
-            disabled
-            class="px-3 py-1 text-xs font-medium text-grey-500 bg-grey-700 rounded border border-grey-600 cursor-not-allowed shrink-0 ml-4"
-          >
-            Edit
-          </button>
-        </div>
-      ))}
-    </div>
+  <div class="mb-8">
+    <EmptyState
+      heading="No outreach templates configured"
+      message="Templates will be available once the outreach workflow is set up."
+      iconPath="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+    />
   </div>
-
-  <!-- Bottom note -->
-  <p class="text-xs text-grey-500 text-center">
-    Live data integration coming soon. This view shows placeholder data.
-  </p>
 </AdminLayout>

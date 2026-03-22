@@ -148,9 +148,10 @@ export async function getEmergencyOpportunities(
     query = query.eq('status', statusFilter);
   }
 
-  if (recencyDays && recencyDays > 0) {
+  if (recencyDays !== undefined && recencyDays >= 0) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - recencyDays);
+    cutoff.setHours(0, 0, 0, 0);
     query = query.gte('date_posted', cutoff.toISOString());
   }
 
@@ -180,9 +181,10 @@ export async function getEmergencyOpportunitySummary(
     .not('status', 'in', '("aged","removed")')
     .in('ir35_status', ['inside', 'unknown']);
 
-  if (recencyDays && recencyDays > 0) {
+  if (recencyDays !== undefined && recencyDays >= 0) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - recencyDays);
+    cutoff.setHours(0, 0, 0, 0);
     query = query.gte('date_posted', cutoff.toISOString());
   }
 
