@@ -227,105 +227,16 @@ const productPartners = [
       </p>
     </div>
 
-    <div id="partner-carousel" class="relative">
-      <!-- Carousel track -->
-      <div class="overflow-hidden rounded-xl">
-        <div id="carousel-track" class="flex transition-transform duration-500 ease-in-out">
-          {productPartners.map((partner, i) => (
-            <div class="carousel-slide w-full shrink-0 px-1" data-index={i}>
-              <ProductPartnerCard
-                name={partner.name}
-                tagline={partner.tagline}
-                description={partner.description}
-                href={partner.href}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <!-- Navigation arrows -->
-      <button
-        id="carousel-prev"
-        class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 sm:-translate-x-5 w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-600 shadow-lg text-primary dark:text-secondary hover:bg-secondary-50 dark:hover:bg-grey-700 transition-colors"
-        aria-label="Previous partner"
-      >
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-      <button
-        id="carousel-next"
-        class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 sm:translate-x-5 w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-600 shadow-lg text-primary dark:text-secondary hover:bg-secondary-50 dark:hover:bg-grey-700 transition-colors"
-        aria-label="Next partner"
-      >
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-
-      <!-- Dots -->
-      <div id="carousel-dots" class="flex justify-center gap-2 mt-6">
-        {productPartners.map((_, i) => (
-          <button
-            class="carousel-dot w-2.5 h-2.5 rounded-full bg-secondary-200 dark:bg-grey-600 transition-colors"
-            data-index={i}
-            aria-label={`Go to partner ${i + 1}`}
-          />
-        ))}
-      </div>
+    <div class="grid gap-6 sm:grid-cols-2">
+      {productPartners.map((partner) => (
+        <ProductPartnerCard
+          name={partner.name}
+          tagline={partner.tagline}
+          description={partner.description}
+          href={partner.href}
+        />
+      ))}
     </div>
-
-    <script>
-      (function () {
-        const track = document.getElementById('carousel-track');
-        const dots = document.querySelectorAll<HTMLButtonElement>('.carousel-dot');
-        const prevBtn = document.getElementById('carousel-prev');
-        const nextBtn = document.getElementById('carousel-next');
-        if (!track || !prevBtn || !nextBtn) return;
-
-        const slides = track.querySelectorAll<HTMLDivElement>('.carousel-slide');
-        const total = slides.length;
-        if (total === 0) return;
-
-        // Random start position
-        let current = Math.floor(Math.random() * total);
-
-        function goTo(index: number) {
-          current = ((index % total) + total) % total;
-          track.style.transform = `translateX(-${current * 100}%)`;
-          dots.forEach((dot, i) => {
-            dot.classList.toggle('bg-primary', i === current);
-            dot.classList.toggle('dark:bg-secondary', i === current);
-            dot.classList.toggle('bg-secondary-200', i !== current);
-            dot.classList.toggle('dark:bg-grey-600', i !== current);
-          });
-        }
-
-        prevBtn.addEventListener('click', () => goTo(current - 1));
-        nextBtn.addEventListener('click', () => goTo(current + 1));
-        dots.forEach((dot) => {
-          dot.addEventListener('click', () => goTo(Number(dot.dataset.index)));
-        });
-
-        // Keyboard navigation
-        document.getElementById('partner-carousel')?.addEventListener('keydown', (e) => {
-          if (e.key === 'ArrowLeft') goTo(current - 1);
-          if (e.key === 'ArrowRight') goTo(current + 1);
-        });
-
-        // Touch swipe
-        let touchStartX = 0;
-        track.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
-        track.addEventListener('touchend', (e) => {
-          const diff = touchStartX - e.changedTouches[0].clientX;
-          if (Math.abs(diff) > 50) goTo(current + (diff > 0 ? 1 : -1));
-        });
-
-        // Initialise at random position
-        goTo(current);
-      })();
-    </script>
 
     <!-- Affiliate disclosure -->
     <p class="mt-12 text-xs text-grey-500 dark:text-warm-300 text-center leading-relaxed">
