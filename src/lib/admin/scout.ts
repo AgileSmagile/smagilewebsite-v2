@@ -15,16 +15,20 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const INSIGHTS_FILE = path.join(DATA_DIR, 'scout-insights.json');
 
 function ensureDataDir(): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function writeInsights(insights: ScoutInsight[]): void {
+  ensureDataDir();
+  const tmp = `${INSIGHTS_FILE}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(insights, null, 2), 'utf-8');
+  fs.renameSync(tmp, INSIGHTS_FILE);
 }
 
 export function getInsights(): ScoutInsight[] {
   ensureDataDir();
 
   if (!fs.existsSync(INSIGHTS_FILE)) {
-    fs.writeFileSync(INSIGHTS_FILE, '[]', 'utf-8');
     return [];
   }
 
@@ -51,7 +55,7 @@ export function addInsight(
   };
 
   insights.unshift(insight);
-  fs.writeFileSync(INSIGHTS_FILE, JSON.stringify(insights, null, 2), 'utf-8');
+  writeInsights(insights);
 
   return insight;
 }
@@ -63,7 +67,7 @@ export function deleteInsight(id: string): boolean {
   if (index === -1) return false;
 
   insights.splice(index, 1);
-  fs.writeFileSync(INSIGHTS_FILE, JSON.stringify(insights, null, 2), 'utf-8');
+  writeInsights(insights);
 
   return true;
 }

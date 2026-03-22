@@ -254,8 +254,12 @@ const insights = getInsights();
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        showStatus(err.error || 'Failed to save insight.', true);
+        let message = 'Failed to save insight.';
+        try {
+          const err = await res.json();
+          if (err.error) message = err.error;
+        } catch { /* non-JSON response body */ }
+        showStatus(message, true);
         return;
       }
 
@@ -306,7 +310,12 @@ const insights = getInsights();
       });
 
       if (!res.ok) {
-        showStatus('Failed to delete insight.', true);
+        let message = 'Failed to delete insight.';
+        try {
+          const err = await res.json();
+          if (err.error) message = err.error;
+        } catch { /* non-JSON response body */ }
+        showStatus(message, true);
         return;
       }
 

@@ -3,13 +3,26 @@ import { getInsights, addInsight, deleteInsight } from '../../../lib/admin/scout
 
 export const prerender = false;
 
-export async function GET() {
-  const insights = getInsights();
+const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
 
-  return new Response(JSON.stringify(insights), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
+function jsonError(message: string, status: number): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: JSON_HEADERS,
   });
+}
+
+export async function GET() {
+  try {
+    const insights = getInsights();
+    return new Response(JSON.stringify(insights), {
+      status: 200,
+      headers: JSON_HEADERS,
+    });
+  } catch (err) {
+    console.error('[scout] GET failed:', err);
+    return jsonError('Failed to read insights', 500);
+  }
 }
 
 export async function POST({ request }: APIContext) {
@@ -17,31 +30,30 @@ export async function POST({ request }: APIContext) {
   try {
     body = await request.json();
   } catch {
-    return new Response(
-      JSON.stringify({ error: 'Invalid JSON body' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    );
+    return jsonError('Invalid JSON body', 400);
   }
 
   const companyName = typeof body.companyName === 'string' ? body.companyName.trim() : '';
   if (!companyName) {
-    return new Response(
-      JSON.stringify({ error: 'Company name is required' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    );
+    return jsonError('Company name is required', 400);
   }
 
-  const insight = addInsight({
-    sourceUrl: typeof body.sourceUrl === 'string' ? body.sourceUrl.trim() : '',
-    selectedText: typeof body.selectedText === 'string' ? body.selectedText.trim() : '',
-    companyName,
-    notes: typeof body.notes === 'string' ? body.notes.trim() : '',
-  });
+  try {
+    const insight = addInsight({
+      sourceUrl: typeof body.sourceUrl === 'string' ? body.sourceUrl.trim() : '',
+      selectedText: typeof body.selectedText === 'string' ? body.selectedText.trim() : '',
+      companyName,
+      notes: typeof body.notes === 'string' ? body.notes.trim() : '',
+    });
 
-  return new Response(JSON.stringify(insight), {
-    status: 201,
-    headers: { 'Content-Type': 'application/json' },
-  });
+    return new Response(JSON.stringify(insight), {
+      status: 201,
+      headers: JSON_HEADERS,
+    });
+  } catch (err) {
+    console.error('[scout] POST failed:', err);
+    return jsonError('Failed to save insight. Check server logs for details.', 500);
+  }
 }
 
 export async function DELETE({ request }: APIContext) {
@@ -49,30 +61,26 @@ export async function DELETE({ request }: APIContext) {
   try {
     body = await request.json();
   } catch {
-    return new Response(
-      JSON.stringify({ error: 'Invalid JSON body' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    );
+    return jsonError('Invalid JSON body', 400);
   }
 
   const id = typeof body.id === 'string' ? body.id : '';
   if (!id) {
-    return new Response(
-      JSON.stringify({ error: 'Insight ID is required' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    );
+    return jsonError('Insight ID is required', 400);
   }
 
-  const deleted = deleteInsight(id);
-  if (!deleted) {
-    return new Response(
-      JSON.stringify({ error: 'Insight not found' }),
-      { status: 404, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
+  try {
+    const deleted = deleteInsight(id);
+    if (!deleted) {
+      return jsonError('Insight not found', 404);
+    }
 
-  return new Response(JSON.stringify({ success: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: JSON_HEADERS,
+    });
+  } catch (err) {
+    console.error('[scout] DELETE failed:', err);
+    return jsonError('Failed to delete insight. Check server logs for details.', 500);
+  }
 }
