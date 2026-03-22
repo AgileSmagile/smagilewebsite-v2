@@ -28,7 +28,20 @@ const defaultOrder = navItems.map(i => i.id);
 
 <!-- Desktop sidebar -->
 <aside id="admin-sidebar" class="hidden md:flex flex-col w-14 hover:w-52 transition-all duration-200 bg-grey-900 border-r border-grey-700 overflow-hidden group/sidebar" data-collapsed="true">
-  <nav class="flex-1 py-4" aria-label="Admin sidebar">
+  <!-- Pin sidebar toggle -->
+  <div class="flex justify-end px-2 pt-2 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200">
+    <button
+      id="pin-sidebar-btn"
+      class="p-1 rounded text-grey-500 hover:text-secondary transition-colors"
+      aria-label="Pin sidebar open"
+      title="Pin sidebar open"
+    >
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+      </svg>
+    </button>
+  </div>
+  <nav class="flex-1 py-2" aria-label="Admin sidebar">
     <ul id="desktop-nav-list" class="space-y-1 px-2" data-default-order={JSON.stringify(defaultOrder)}>
       {navItems.map((item) => (
         <li data-nav-id={item.id} class="nav-item group/item relative">
@@ -164,7 +177,50 @@ const defaultOrder = navItems.map(i => i.id);
 <script>
   const STORAGE_ORDER_KEY = 'admin-sidebar-order';
   const STORAGE_PINNED_KEY = 'admin-sidebar-pinned';
+  const STORAGE_SIDEBAR_PINNED_KEY = 'admin-sidebar-expanded';
   const ALWAYS_PINNED = 'dashboard';
+
+  // Sidebar pin/unpin (expand/collapse)
+  function initSidebarPin() {
+    const sidebar = document.getElementById('admin-sidebar');
+    const pinBtn = document.getElementById('pin-sidebar-btn');
+    if (!sidebar || !pinBtn) return;
+
+    const isPinned = localStorage.getItem(STORAGE_SIDEBAR_PINNED_KEY) === 'true';
+    applySidebarPin(sidebar, pinBtn, isPinned);
+
+    pinBtn.addEventListener('click', () => {
+      const current = sidebar.classList.contains('sidebar-pinned');
+      const next = !current;
+      localStorage.setItem(STORAGE_SIDEBAR_PINNED_KEY, String(next));
+      applySidebarPin(sidebar, pinBtn, next);
+    });
+  }
+
+  function applySidebarPin(sidebar: HTMLElement, btn: HTMLElement, pinned: boolean) {
+    const icon = btn.querySelector('svg');
+    if (pinned) {
+      sidebar.classList.add('sidebar-pinned');
+      sidebar.classList.remove('w-14', 'hover:w-52');
+      sidebar.classList.add('w-52');
+      btn.setAttribute('aria-label', 'Unpin sidebar');
+      btn.setAttribute('title', 'Unpin sidebar');
+      btn.classList.add('text-secondary');
+      btn.classList.remove('text-grey-500');
+      if (icon) icon.setAttribute('fill', 'currentColor');
+    } else {
+      sidebar.classList.remove('sidebar-pinned');
+      sidebar.classList.remove('w-52');
+      sidebar.classList.add('w-14', 'hover:w-52');
+      btn.setAttribute('aria-label', 'Pin sidebar open');
+      btn.setAttribute('title', 'Pin sidebar open');
+      btn.classList.remove('text-secondary');
+      btn.classList.add('text-grey-500');
+      if (icon) icon.setAttribute('fill', 'none');
+    }
+  }
+
+  initSidebarPin();
 
   function getDefaultOrder(): string[] {
     const list = document.getElementById('desktop-nav-list');
@@ -421,11 +477,25 @@ const defaultOrder = navItems.map(i => i.id);
 </script>
 
 <style>
-  /* Unpinned items: hidden by default, visible when sidebar hovered or in edit mode */
+  /* When sidebar is pinned open, show labels and controls without hover */
+  #admin-sidebar.sidebar-pinned span,
+  #admin-sidebar.sidebar-pinned .pin-btn,
+  #admin-sidebar.sidebar-pinned > div {
+    opacity: 1 !important;
+  }
+  #admin-sidebar.sidebar-pinned .nav-item .pin-btn {
+    opacity: 0;
+  }
+  #admin-sidebar.sidebar-pinned .nav-item:hover .pin-btn {
+    opacity: 1;
+  }
+
+  /* Unpinned items: hidden by default, visible when sidebar hovered/pinned or in edit mode */
   #admin-sidebar .sidebar-unpinned {
     display: none;
   }
-  #admin-sidebar:hover .sidebar-unpinned {
+  #admin-sidebar:hover .sidebar-unpinned,
+  #admin-sidebar.sidebar-pinned .sidebar-unpinned {
     display: list-item;
     opacity: 0.45;
   }
