@@ -40,7 +40,7 @@ jobs:
       - name: Store metrics in Supabase
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_KEY" ]; then
