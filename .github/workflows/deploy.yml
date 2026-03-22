@@ -53,12 +53,13 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.PI_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf "Host pi\n  HostName ssh.smagile.co\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking no\n  ProxyCommand cloudflared access ssh --hostname %%h\n" "${{ secrets.PI_SSH_USER }}" > ~/.ssh/config
+          printf "Host pi\n  HostName ssh.smagile.co\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking no\n  ProxyCommand env TUNNEL_SERVICE_TOKEN_ID=%s TUNNEL_SERVICE_TOKEN_SECRET=%s cloudflared access ssh --hostname %%h\n" \
+            "${{ secrets.PI_SSH_USER }}" \
+            "${{ secrets.CF_ACCESS_CLIENT_ID }}" \
+            "${{ secrets.CF_ACCESS_CLIENT_SECRET }}" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
 
       - name: Deploy to Pi
-        env:
-          TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           # Transfer artefact
           scp deploy.tar.gz pi:${{ env.DEPLOY_DIR }}/deploy.tar.gz
