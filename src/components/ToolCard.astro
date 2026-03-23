@@ -1,0 +1,68 @@
+---
+interface Props {
+  name: string;
+  slug: string;
+  logo?: string;
+  description: string;
+  category: string;
+  websiteUrl: string;
+  featured?: boolean;
+}
+
+const { name, slug, logo, description, category, websiteUrl, featured = false } = Astro.props;
+---
+
+<div class:list={[
+  'group relative flex flex-col p-6 sm:p-8 bg-secondary-50 dark:bg-grey-800 rounded-xl border transition-all hover:shadow-lg hover:shadow-accent/5',
+  featured
+    ? 'border-accent/40 dark:border-accent-muted/40'
+    : 'border-secondary-200 dark:border-grey-700 hover:border-accent/40 dark:hover:border-secondary/40',
+]}>
+  <!-- Gold accent bar -->
+  <div class="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-accent-light/60 to-transparent"></div>
+
+  {featured && (
+    <span class="absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent dark:text-accent-light font-medium">
+      Featured
+    </span>
+  )}
+
+  <div class="flex items-start gap-4">
+    <!-- Logo or initial -->
+    <div class="shrink-0 w-12 h-12 rounded-lg bg-secondary-100 dark:bg-grey-700 flex items-center justify-center overflow-hidden">
+      {logo ? (
+        <img src={logo} alt={`${name} logo`} class="w-8 h-8 object-contain" loading="lazy" />
+      ) : (
+        <span class="text-lg font-bold text-primary dark:text-secondary font-heading">{name.charAt(0)}</span>
+      )}
+    </div>
+    <div class="min-w-0">
+      <h3 class="text-lg font-semibold text-grey-800 dark:text-white font-heading">{name}</h3>
+      <span class="mt-0.5 inline-block text-xs px-2 py-0.5 rounded-full bg-secondary-100 dark:bg-grey-700 text-grey-700 dark:text-warm-200 capitalize">
+        {category}
+      </span>
+    </div>
+  </div>
+
+  <p class="mt-4 text-grey-700 dark:text-warm-300 leading-relaxed flex-1">{description}</p>
+
+  <div class="mt-5 flex items-center gap-4">
+    <a
+      href={`/tools/${slug}/`}
+      class="inline-flex items-center gap-1.5 text-primary dark:text-secondary font-medium group-hover:gap-2.5 transition-all"
+    >
+      Read more
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </a>
+    <a
+      href={websiteUrl}
+      rel="noopener sponsored"
+      target="_blank"
+      class="text-sm text-grey-500 dark:text-warm-300 hover:text-primary dark:hover:text-secondary transition-colors"
+    >
+      Visit site &rarr;
+    </a>
+  </div>
+</div>
