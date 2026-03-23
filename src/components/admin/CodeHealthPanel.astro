@@ -1,0 +1,269 @@
+---
+/**
+ * CodeHealthPanel — shared code health metrics display.
+ *
+ * Min-spec metrics surfaced for ALL projects:
+ *   Row 1: Lines of Code, Tests, Coverage, Vulnerabilities
+ *   Row 2: Build Time, Lint Errors, TODOs/FIXMEs, Type Safety
+ *   Row 3: Bundle Size, Change Velocity, Last Snapshot
+ *   Audit panels: Largest Files, Lines by Directory, Bloat Signals,
+ *                 TODO Hotspots, Git Churn, File Type Breakdown
+ *
+ * This layout is the standard. Project-specific metrics (usage, AI,
+ * pipeline, funnel) belong outside this component.
+ */
+import StatCard from './StatCard.astro';
+import AuditPanel from './AuditPanel.astro';
+
+interface CodeHealthSnapshot {
+  lines_of_code: number | null;
+  sloc: number | null;
+  test_count: number | null;
+  tests_passing: number | null;
+  tests_failing: number | null;
+  test_coverage_pct: number | null;
+  vuln_critical: number | null;
+  vuln_high: number | null;
+  vuln_moderate: number | null;
+  build_time_ms: number | null;
+  lint_errors: number | null;
+  lint_warnings: number | null;
+  todo_fixme_count: number | null;
+  bundle_size_kb: number | null;
+  type_safety_any_count: number | null;
+  insertions_30d: number | null;
+  deletions_30d: number | null;
+  files_changed_30d: number | null;
+  created_at: string;
+  top_files?: Array<{ path: string; lines: number }>;
+  lines_by_directory?: Array<{ directory: string; lines: number }>;
+  bloat_files?: Array<{ path: string; lines: number }>;
+  todo_hotspots?: Array<{ path: string; count: number }>;
+  git_churn?: Array<{ path: string; changes: number }>;
+  file_type_breakdown?: Array<{ extension: string; lines: number; files: number }>;
+  [key: string]: unknown;
+}
+
+interface Props {
+  latest: CodeHealthSnapshot;
+  previous?: CodeHealthSnapshot | null;
+  history: CodeHealthSnapshot[];
+}
+
+const { latest, previous: prev, history } = Astro.props;
+
+// ── Helpers (duplicated from metrics.ts to keep component self-contained) ──
+function getTrend(a: number | null | undefined, b: number | null | undefined): 'up' | 'down' | 'flat' {
+  if (a == null || b == null) return 'flat';
+  if (a > b) return 'up';
+  if (a < b) return 'down';
+  return 'flat';
+}
+
+function invertTrend(t: 'up' | 'down' | 'flat'): 'up' | 'down' | 'flat' {
+  if (t === 'up') return 'down';
+  if (t === 'down') return 'up';
+  return 'flat';
+}
+
+function formatNumber(n: number | null | undefined): string {
+  if (n == null) return '--';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString('en-GB');
+}
+
+function formatDuration(ms: number | null | undefined): string {
+  if (ms == null) return '--';
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatPct(pct: number | null | undefined): string {
+  if (pct == null) return '--';
+  return `${pct.toFixed(1)}%`;
+}
+
+function formatRelativeDate(iso: string | null | undefined): string {
+  if (!iso) return '--';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function formatFilePath(p: string): string {
+  return p.replace(/^src\//, '');
+}
+
+function extractSparkline(items: CodeHealthSnapshot[], key: string): number[] {
+  return items.map((i) => {
+    const v = i[key];
+    return typeof v === 'number' ? v : 0;
+  }).filter((v) => v != null);
+}
+---
+
+<details open class="group/ch">
+  <summary class="flex items-center gap-2 cursor-pointer select-none mb-3 text-lg font-semibold text-white">
+    <svg class="w-4 h-4 transition-transform group-open/ch:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+    Code Health
+  </summary>
+
+  {/* Row 1: Quality indicators */}
+  <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
+    <StatCard
+      label="Lines of Code"
+      value={formatNumber(latest.sloc ?? latest.lines_of_code)}
+      subtitle={latest.sloc ? 'Source lines (excl. blanks/comments)' : 'Total lines'}
+      trend={getTrend(latest.sloc ?? latest.lines_of_code, prev?.sloc ?? prev?.lines_of_code)}
+      sparkline={extractSparkline(history, latest.sloc ? 'sloc' : 'lines_of_code')}
+    />
+    <StatCard
+      label="Tests"
+      value={formatNumber(latest.test_count)}
+      subtitle={latest.tests_passing != null
+        ? `${latest.tests_passing} passing, ${latest.tests_failing ?? 0} failing`
+        : undefined}
+      trend={getTrend(latest.test_count, prev?.test_count)}
+      sparkline={extractSparkline(history, 'test_count')}
+    />
+    <StatCard
+      label="Coverage"
+      value={formatPct(latest.test_coverage_pct)}
+      subtitle="Test coverage"
+      trend={getTrend(latest.test_coverage_pct, prev?.test_coverage_pct)}
+      sparkline={extractSparkline(history, 'test_coverage_pct')}
+      tooltip="Percentage of code covered by automated tests"
+    />
+    <StatCard
+      label="Vulnerabilities"
+      value={formatNumber((latest.vuln_critical ?? 0) + (latest.vuln_high ?? 0) + (latest.vuln_moderate ?? 0))}
+      subtitle={latest.vuln_critical
+        ? `${latest.vuln_critical} critical, ${latest.vuln_high ?? 0} high`
+        : 'npm audit'}
+      trend={invertTrend(getTrend(
+        (latest.vuln_critical ?? 0) + (latest.vuln_high ?? 0),
+        (prev?.vuln_critical ?? 0) + (prev?.vuln_high ?? 0),
+      ))}
+    />
+  </div>
+
+  {/* Row 2: Build and code quality */}
+  <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
+    <StatCard
+      label="Build Time"
+      value={formatDuration(latest.build_time_ms)}
+      subtitle="Production build"
+      trend={invertTrend(getTrend(latest.build_time_ms, prev?.build_time_ms))}
+      sparkline={extractSparkline(history, 'build_time_ms')}
+    />
+    <StatCard
+      label="Lint Errors"
+      value={formatNumber(latest.lint_errors)}
+      subtitle={latest.lint_warnings != null ? `${latest.lint_warnings} warnings` : undefined}
+      trend={invertTrend(getTrend(latest.lint_errors, prev?.lint_errors))}
+      sparkline={extractSparkline(history, 'lint_errors')}
+    />
+    <StatCard
+      label="TODOs / FIXMEs"
+      value={formatNumber(latest.todo_fixme_count)}
+      subtitle="In codebase"
+      trend={invertTrend(getTrend(latest.todo_fixme_count, prev?.todo_fixme_count))}
+      sparkline={extractSparkline(history, 'todo_fixme_count')}
+    />
+    <StatCard
+      label="Type Safety"
+      value={formatNumber(latest.type_safety_any_count)}
+      subtitle="'any' usages"
+      trend={invertTrend(getTrend(latest.type_safety_any_count, prev?.type_safety_any_count))}
+      sparkline={extractSparkline(history, 'type_safety_any_count')}
+      tooltip="Count of 'any' type annotations; lower is better"
+    />
+  </div>
+
+  {/* Row 3: Activity and metadata */}
+  <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
+    {latest.bundle_size_kb != null && (
+      <StatCard
+        label="Bundle Size"
+        value={`${formatNumber(latest.bundle_size_kb)} KB`}
+        subtitle="Production bundle"
+        trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
+        sparkline={extractSparkline(history, 'bundle_size_kb')}
+      />
+    )}
+    <StatCard
+      label="Change Velocity"
+      value={latest.insertions_30d != null
+        ? `+${formatNumber(latest.insertions_30d)} / -${formatNumber(latest.deletions_30d)}`
+        : '--'}
+      subtitle={latest.files_changed_30d != null
+        ? `${formatNumber(latest.files_changed_30d)} files changed`
+        : 'Last 30 days'}
+      tooltip="Lines added and removed in the last 30 days"
+    />
+    <StatCard
+      label="Last Snapshot"
+      value={formatRelativeDate(latest.created_at)}
+      subtitle={new Date(latest.created_at).toLocaleDateString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric',
+      })}
+    />
+  </div>
+
+  {/* Audit panels */}
+  {(latest.top_files || latest.lines_by_directory || latest.bloat_files || latest.todo_hotspots || latest.git_churn || latest.file_type_breakdown) && (
+    <div class="grid gap-3 grid-cols-1 lg:grid-cols-2 mt-3">
+      {latest.top_files && (
+        <AuditPanel
+          title="Largest Files"
+          countLabel="files"
+          items={latest.top_files.map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
+        />
+      )}
+      {latest.lines_by_directory && (
+        <AuditPanel
+          title="Lines by Directory"
+          countLabel="dirs"
+          items={latest.lines_by_directory.map((d) => ({ label: d.directory, value: `${formatNumber(d.lines)} LOC` }))}
+        />
+      )}
+      {latest.bloat_files && (
+        <AuditPanel
+          title="Bloat Signals"
+          countLabel="files over threshold"
+          items={latest.bloat_files.map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
+        />
+      )}
+      {latest.todo_hotspots && (
+        <AuditPanel
+          title="TODO Hotspots"
+          countLabel="files"
+          items={latest.todo_hotspots.map((f) => ({ label: formatFilePath(f.path), value: `${f.count} TODOs` }))}
+        />
+      )}
+      {latest.git_churn && (
+        <AuditPanel
+          title="Git Churn (7 days)"
+          countLabel="files"
+          items={latest.git_churn.map((f) => ({ label: formatFilePath(f.path), value: `${f.changes} changes` }))}
+        />
+      )}
+      {latest.file_type_breakdown && (
+        <AuditPanel
+          title="File Types"
+          countLabel="extensions"
+          items={latest.file_type_breakdown.map((f) => ({ label: f.extension, value: `${formatNumber(f.lines)} lines (${f.files} files)` }))}
+        />
+      )}
+    </div>
+  )}
+</details>

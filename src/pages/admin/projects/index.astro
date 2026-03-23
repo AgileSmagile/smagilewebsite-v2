@@ -3,7 +3,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import AgentCard from '../../../components/admin/AgentCard.astro';
-import AuditPanel from '../../../components/admin/AuditPanel.astro';
+import CodeHealthPanel from '../../../components/admin/CodeHealthPanel.astro';
 import CycleTimeChart from '../../../components/admin/CycleTimeChart.astro';
 import { getAgentStatuses } from '../../../lib/admin/agents';
 import { projects, type ProjectInfo } from '../../../lib/admin/projects';
@@ -15,8 +15,6 @@ import {
   formatNumber,
   formatDuration,
   formatPct,
-  formatRelativeDate,
-  formatFilePath,
   estimateAiCost,
   extractSparkline,
   type ProjectMetrics,
@@ -148,153 +146,15 @@ function funnelPct(value: number, max: number): number {
       )}
 
       {/* ── Code Health ── */}
-      <section class="mb-6">
-        <h3 class="text-lg font-semibold text-white mb-3">Code Health</h3>
-        {latest ? (
-          <>
-            <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
-              <StatCard
-                label="Lines of Code"
-                value={formatNumber(latest.sloc ?? latest.lines_of_code)}
-                subtitle={latest.sloc ? 'Source lines (excl. blanks/comments)' : 'Total lines'}
-                trend={getTrend(latest.sloc ?? latest.lines_of_code, prev?.sloc ?? prev?.lines_of_code)}
-                sparkline={extractSparkline(history, latest.sloc ? 'sloc' : 'lines_of_code')}
-              />
-              <StatCard
-                label="Tests"
-                value={formatNumber(latest.test_count)}
-                subtitle={latest.tests_passing !== null
-                  ? `${latest.tests_passing} passing, ${latest.tests_failing ?? 0} failing`
-                  : undefined}
-                trend={getTrend(latest.test_count, prev?.test_count)}
-                sparkline={extractSparkline(history, 'test_count')}
-              />
-              <StatCard
-                label="Coverage"
-                value={formatPct(latest.test_coverage_pct)}
-                subtitle="Test coverage"
-                trend={getTrend(latest.test_coverage_pct, prev?.test_coverage_pct)}
-                sparkline={extractSparkline(history, 'test_coverage_pct')}
-                tooltip="Percentage of code covered by automated tests"
-              />
-              <StatCard
-                label="Vulnerabilities"
-                value={formatNumber((latest.vuln_critical ?? 0) + (latest.vuln_high ?? 0) + (latest.vuln_moderate ?? 0))}
-                subtitle={latest.vuln_critical
-                  ? `${latest.vuln_critical} critical, ${latest.vuln_high ?? 0} high`
-                  : 'npm audit'}
-                trend={invertTrend(getTrend(
-                  (latest.vuln_critical ?? 0) + (latest.vuln_high ?? 0),
-                  (prev?.vuln_critical ?? 0) + (prev?.vuln_high ?? 0),
-                ))}
-              />
-              <StatCard
-                label="Build Time"
-                value={formatDuration(latest.build_time_ms)}
-                subtitle="Production build"
-                trend={invertTrend(getTrend(latest.build_time_ms, prev?.build_time_ms))}
-                sparkline={extractSparkline(history, 'build_time_ms')}
-              />
-              <StatCard
-                label="Lint Errors"
-                value={formatNumber(latest.lint_errors)}
-                subtitle={latest.lint_warnings !== null ? `${latest.lint_warnings} warnings` : undefined}
-                trend={invertTrend(getTrend(latest.lint_errors, prev?.lint_errors))}
-                sparkline={extractSparkline(history, 'lint_errors')}
-              />
-              <StatCard
-                label="TODOs / FIXMEs"
-                value={formatNumber(latest.todo_fixme_count)}
-                subtitle="In codebase"
-                trend={invertTrend(getTrend(latest.todo_fixme_count, prev?.todo_fixme_count))}
-                sparkline={extractSparkline(history, 'todo_fixme_count')}
-              />
-              <StatCard
-                label="Bundle Size"
-                value={latest.bundle_size_kb !== null ? `${formatNumber(latest.bundle_size_kb)} KB` : '--'}
-                subtitle="Production bundle"
-                trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
-                sparkline={extractSparkline(history, 'bundle_size_kb')}
-                tooltip="Total production bundle size in kilobytes"
-              />
-            </div>
-
-            {/* Secondary code health row */}
-            <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
-              <StatCard
-                label="Type Safety"
-                value={formatNumber(latest.type_safety_any_count)}
-                subtitle="'any' usages in codebase"
-                trend={invertTrend(getTrend(latest.type_safety_any_count, prev?.type_safety_any_count))}
-                sparkline={extractSparkline(history, 'type_safety_any_count')}
-                tooltip="Count of 'any' type annotations — lower is better"
-              />
-              <StatCard
-                label="Change Velocity"
-                value={latest.insertions_30d !== null
-                  ? `+${formatNumber(latest.insertions_30d)} / -${formatNumber(latest.deletions_30d)}`
-                  : '--'}
-                subtitle={latest.files_changed_30d !== null
-                  ? `${formatNumber(latest.files_changed_30d)} files changed`
-                  : 'Last 30 days'}
-                tooltip="Lines added and removed in the last 30 days"
-              />
-              <StatCard
-                label="Last Snapshot"
-                value={formatRelativeDate(latest.created_at)}
-                subtitle={new Date(latest.created_at).toLocaleDateString('en-GB', {
-                  day: 'numeric', month: 'short', year: 'numeric',
-                })}
-              />
-            </div>
-
-            {/* ── Detailed Audit Data ── */}
-            {(latest.top_files || latest.lines_by_directory || latest.bloat_files || latest.todo_hotspots || latest.git_churn || latest.type_definitions || latest.file_type_breakdown) && (
-              <div class="grid gap-3 grid-cols-1 lg:grid-cols-2 mt-3">
-                <AuditPanel
-                  title="Largest Files"
-                  countLabel="files"
-                  items={(latest.top_files ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
-                />
-                <AuditPanel
-                  title="Lines by Directory"
-                  countLabel="dirs"
-                  items={(latest.lines_by_directory ?? []).map((d) => ({ label: d.directory, value: `${formatNumber(d.lines)} LOC` }))}
-                />
-                <AuditPanel
-                  title="Bloat Signals"
-                  countLabel="files over 300 lines"
-                  items={(latest.bloat_files ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
-                />
-                <AuditPanel
-                  title="TODO Hotspots"
-                  countLabel="files"
-                  items={(latest.todo_hotspots ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.count} TODOs` }))}
-                />
-                <AuditPanel
-                  title="Git Churn (7 days)"
-                  countLabel="files"
-                  items={(latest.git_churn ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.changes} changes` }))}
-                />
-                <AuditPanel
-                  title="Type Definitions"
-                  countLabel="files"
-                  items={(latest.type_definitions ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.count} types` }))}
-                />
-                <AuditPanel
-                  title="File Types"
-                  countLabel="types"
-                  items={(latest.file_type_breakdown ?? []).map((f) => ({ label: f.extension, value: `${formatNumber(f.lines)} lines / ${f.files} files` }))}
-                />
-              </div>
-            )}
-          </>
-        ) : supabaseConfigured ? (
-          <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
-            <p class="text-sm text-warm-300">No code health snapshots found. Data is collected on each push to main.</p>
-          </div>
-        ) : null}
-      </section>
+      {latest ? (
+        <div class="mb-6">
+          <CodeHealthPanel latest={latest} previous={prev} history={history} />
+        </div>
+      ) : supabaseConfigured ? (
+        <div class="p-4 mb-6 bg-grey-800 rounded-xl border border-grey-700">
+          <p class="text-sm text-warm-300">No code health snapshots found. Data is collected on each push to main.</p>
+        </div>
+      ) : null}
 
       {/* ── Usage Overview ── */}
       {supabaseConfigured && (
@@ -591,160 +451,31 @@ function funnelPct(value: number, max: number): number {
         )}
 
         {/* ── Code Health ── */}
-        <section class="mb-6">
-          <h3 class="text-lg font-semibold text-white mb-3">Code Health</h3>
-          {sLatest ? (
-            <>
-              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
-                <StatCard
-                  label="Lines of Code"
-                  value={formatNumber(sLatest.sloc ?? sLatest.lines_of_code)}
-                  subtitle={sLatest.sloc ? 'Source lines (excl. blanks/comments)' : 'Total lines'}
-                  trend={getTrend(sLatest.sloc ?? sLatest.lines_of_code, sPrev?.sloc ?? sPrev?.lines_of_code)}
-                  sparkline={extractSparkline(sHistory, sLatest.sloc ? 'sloc' : 'lines_of_code')}
-                />
-                <StatCard
-                  label="Tests"
-                  value={formatNumber(sLatest.test_count)}
-                  subtitle={sLatest.tests_passing !== null
-                    ? `${sLatest.tests_passing} passing, ${sLatest.tests_failing ?? 0} failing`
-                    : undefined}
-                  trend={getTrend(sLatest.test_count, sPrev?.test_count)}
-                  sparkline={extractSparkline(sHistory, 'test_count')}
-                />
-                <StatCard
-                  label="Coverage"
-                  value={formatPct(sLatest.test_coverage_pct)}
-                  subtitle="Test coverage"
-                  trend={getTrend(sLatest.test_coverage_pct, sPrev?.test_coverage_pct)}
-                  sparkline={extractSparkline(sHistory, 'test_coverage_pct')}
-                />
-                <StatCard
-                  label="Vulnerabilities"
-                  value={formatNumber((sLatest.vuln_critical ?? 0) + (sLatest.vuln_high ?? 0) + (sLatest.vuln_moderate ?? 0))}
-                  subtitle={sLatest.vuln_critical
-                    ? `${sLatest.vuln_critical} critical, ${sLatest.vuln_high ?? 0} high`
-                    : 'npm audit'}
-                  trend={invertTrend(getTrend(
-                    (sLatest.vuln_critical ?? 0) + (sLatest.vuln_high ?? 0),
-                    (sPrev?.vuln_critical ?? 0) + (sPrev?.vuln_high ?? 0),
-                  ))}
-                />
-              </div>
-
-              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
-                <StatCard
-                  label="Build Time"
-                  value={formatDuration(sLatest.build_time_ms)}
-                  subtitle="Production build (Astro)"
-                  trend={invertTrend(getTrend(sLatest.build_time_ms, sPrev?.build_time_ms))}
-                  sparkline={extractSparkline(sHistory, 'build_time_ms')}
-                />
-                <StatCard
-                  label="Lint Errors"
-                  value={formatNumber(sLatest.lint_errors)}
-                  subtitle={sLatest.lint_warnings !== null ? `${sLatest.lint_warnings} warnings` : undefined}
-                  trend={invertTrend(getTrend(sLatest.lint_errors, sPrev?.lint_errors))}
-                  sparkline={extractSparkline(sHistory, 'lint_errors')}
-                />
-                <StatCard
-                  label="TODOs / FIXMEs"
-                  value={formatNumber(sLatest.todo_fixme_count)}
-                  subtitle="In codebase"
-                  trend={invertTrend(getTrend(sLatest.todo_fixme_count, sPrev?.todo_fixme_count))}
-                  sparkline={extractSparkline(sHistory, 'todo_fixme_count')}
-                />
-                <StatCard
-                  label="Type Safety"
-                  value={formatNumber(sLatest.type_safety_any_count)}
-                  subtitle="'any' usages in codebase"
-                  trend={invertTrend(getTrend(sLatest.type_safety_any_count, sPrev?.type_safety_any_count))}
-                  sparkline={extractSparkline(sHistory, 'type_safety_any_count')}
-                  tooltip="Count of 'any' type annotations — lower is better"
-                />
-              </div>
-
-              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
-                <StatCard
-                  label="Change Velocity"
-                  value={sLatest.insertions_30d !== null
-                    ? `+${formatNumber(sLatest.insertions_30d)} / -${formatNumber(sLatest.deletions_30d)}`
-                    : '--'}
-                  subtitle={sLatest.files_changed_30d !== null
-                    ? `${formatNumber(sLatest.files_changed_30d)} files changed`
-                    : 'Last 30 days'}
-                  tooltip="Lines added and removed in the last 30 days"
-                />
-              </div>
-
-              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
-                <StatCard
-                  label="Last Snapshot"
-                  value={formatRelativeDate(sLatest.created_at)}
-                  subtitle={new Date(sLatest.created_at).toLocaleDateString('en-GB', {
-                    day: 'numeric', month: 'short', year: 'numeric',
-                  })}
-                />
-              </div>
-
-              {/* ── Detailed Audit Data ── */}
-              {(sLatest.top_files || sLatest.lines_by_directory || sLatest.bloat_files || sLatest.todo_hotspots || sLatest.git_churn || sLatest.file_type_breakdown) && (
-                <div class="grid gap-3 grid-cols-1 lg:grid-cols-2 mt-3">
-                  <AuditPanel
-                    title="Largest Files"
-                    countLabel="files"
-                    items={(sLatest.top_files ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
-                  />
-                  <AuditPanel
-                    title="Lines by Directory"
-                    countLabel="dirs"
-                    items={(sLatest.lines_by_directory ?? []).map((d) => ({ label: d.directory, value: `${formatNumber(d.lines)} LOC` }))}
-                  />
-                  <AuditPanel
-                    title="Bloat Signals"
-                    countLabel="files over 200 lines"
-                    items={(sLatest.bloat_files ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${formatNumber(f.lines)} lines` }))}
-                  />
-                  <AuditPanel
-                    title="TODO Hotspots"
-                    countLabel="files"
-                    items={(sLatest.todo_hotspots ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.count} TODOs` }))}
-                  />
-                  <AuditPanel
-                    title="Git Churn (7 days)"
-                    countLabel="files"
-                    items={(sLatest.git_churn ?? []).map((f) => ({ label: formatFilePath(f.path), value: `${f.changes} changes` }))}
-                  />
-                  <AuditPanel
-                    title="File Types"
-                    countLabel="types"
-                    items={(sLatest.file_type_breakdown ?? []).map((f) => ({ label: f.extension, value: `${formatNumber(f.lines)} lines / ${f.files} files` }))}
-                  />
-                </div>
-              )}
-            </>
-          ) : supabaseConfigured ? (
-            <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
-              <p class="text-sm text-warm-300">No code health snapshots found. Data is collected on each push to main.</p>
-            </div>
-          ) : (
-            <div class="p-4 mb-4 bg-amber-900/30 rounded-xl border border-amber-700/50">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-                <div>
-                  <p class="text-sm font-medium text-amber-200">Supabase not configured</p>
-                  <p class="mt-1 text-xs text-amber-300/80">
-                    Add <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_URL</code> and
-                    <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> to your
-                    <code class="font-mono bg-amber-900/50 px-1 rounded">.env</code> file to enable live metrics.
-                  </p>
-                </div>
+        {sLatest ? (
+          <div class="mb-6">
+            <CodeHealthPanel latest={sLatest} previous={sPrev} history={sHistory} />
+          </div>
+        ) : supabaseConfigured ? (
+          <div class="p-4 mb-6 bg-grey-800 rounded-xl border border-grey-700">
+            <p class="text-sm text-warm-300">No code health snapshots found. Data is collected on each push to main.</p>
+          </div>
+        ) : (
+          <div class="p-4 mb-6 bg-amber-900/30 rounded-xl border border-amber-700/50">
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-amber-200">Supabase not configured</p>
+                <p class="mt-1 text-xs text-amber-300/80">
+                  Add <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_URL</code> and
+                  <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> to your
+                  <code class="font-mono bg-amber-900/50 px-1 rounded">.env</code> file to enable live metrics.
+                </p>
               </div>
             </div>
-          )}
-        </section>
+          </div>
+        )}
 
         {/* ── Infrastructure ── */}
         <section class="mb-6">
