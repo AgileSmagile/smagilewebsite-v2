@@ -55,6 +55,29 @@ jobs:
             echo "Supabase secrets not configured — skipping persistence"
           fi
 
+      - name: Create card for new vulnerabilities
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        env:
+          BMAP_KEY: ${{ secrets.BUSINESSMAP_API_KEY }}
+          METRICS: ${{ steps.metrics.outputs.json }}
+        run: |
+          if [ -z "$BMAP_KEY" ]; then exit 0; fi
+          VULN_TOTAL=$(echo "$METRICS" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8')); console.log((d.vuln_critical||0)+(d.vuln_high||0)+(d.vuln_moderate||0));")
+          VULN_CRIT=$(echo "$METRICS" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8')); console.log(d.vuln_critical||0);")
+          VULN_HIGH=$(echo "$METRICS" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8')); console.log(d.vuln_high||0);")
+          if [ "$VULN_TOTAL" -gt 0 ]; then
+            TITLE="npm vulnerabilities: smagile.co (${VULN_TOTAL} total, ${VULN_CRIT} critical, ${VULN_HIGH} high)"
+            DESC="Detected by code health workflow. Run npm audit in smagilewebsite-v2 for details. Try npm audit fix first, then npm overrides for transitive deps."
+            BODY=$(node -e "console.log(JSON.stringify({title:process.argv[1],description:'<p>'+process.argv[2]+'</p>',column_id:92,workflow_id:6,lane_id:6,color:'cc4444'}))" "$TITLE" "$DESC")
+            curl -s -X POST \
+              -H "apikey: ${BMAP_KEY}" \
+              -H "Content-Type: application/json" \
+              "https://smagile.kanbanize.com/api/v2/cards" \
+              -d "$BODY" > /dev/null && echo "Vulnerability card created" || echo "Failed to create card"
+          else
+            echo "No vulnerabilities found — no card needed"
+          fi
+
       - name: Summary
         run: |
           echo "### Code Health Metrics (smagile.co)" >> "$GITHUB_STEP_SUMMARY"
