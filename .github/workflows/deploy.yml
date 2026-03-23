@@ -32,20 +32,80 @@ jobs:
       - name: Run tests
         run: npm run test:run
 
-      - name: Create board card on failure
+      - name: Notify board on CI failure
         if: failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         env:
           BMAP_KEY: ${{ secrets.BUSINESSMAP_API_KEY }}
+          BMAP_API: https://smagile.kanbanize.com/api/v2
         run: |
           if [ -z "$BMAP_KEY" ]; then
-            echo "BUSINESSMAP_API_KEY not configured — skipping board notification"
+            echo "BUSINESSMAP_API_KEY not configured — skipping"
             exit 0
           fi
-          TITLE="CI failure: smagile.co $(date -u +%Y-%m-%d)"
-          DESC="Build or tests failed on commit ${GITHUB_SHA::8} by ${GITHUB_ACTOR}. Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Check gh run view ${GITHUB_RUN_ID} --log-failed for details."
-          BODY=$(node -e "console.log(JSON.stringify({title:process.argv[1],description:'<p>'+process.argv[2]+'</p>',column_id:92,workflow_id:6,lane_id:6,color:'cc4444'}))" "$TITLE" "$DESC")
-          curl -s -X POST \
-            -H "apikey: ${BMAP_KEY}" \
-            -H "Content-Type: application/json" \
-            "https://smagile.kanbanize.com/api/v2/cards" \
-            -d "$BODY" > /dev/null && echo "Board card created" || echo "Failed to create board card"
+          CARD_TITLE="CI failure: smagile.co"
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          DETAIL="Commit ${GITHUB_SHA::8} by ${GITHUB_ACTOR}. Run: ${RUN_URL}"
+
+          # Find existing CI failure card (dedup: one card per project)
+          MATCH=$(curl -s -H "apikey: ${BMAP_KEY}" \
+            "${BMAP_API}/cards?board_ids=4&per_page=200" | \
+            CARD_TITLE="$CARD_TITLE" node -e '
+              let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{
+                const cards=(JSON.parse(d).data||{}).data||[];
+                const m=cards.find(c=>c.title===process.env.CARD_TITLE);
+                if(m)process.stdout.write(m.card_id+":"+m.column_id);
+              })')
+
+          if [ -n "$MATCH" ]; then
+            CID="${MATCH%%:*}"; COL="${MATCH##*:}"
+            # Add comment with new failure details
+            curl -s -X POST -H "apikey: ${BMAP_KEY}" -H "Content-Type: application/json" \
+              "${BMAP_API}/cards/${CID}/comments" \
+              -d "$(DETAIL="$DETAIL" node -e 'console.log(JSON.stringify({text:process.env.DETAIL}))')" > /dev/null
+            # Reopen to Ready if in Closed (32) or Archive (33)
+            if [ "$COL" = "32" ] || [ "$COL" = "33" ]; then
+              curl -s -X PATCH -H "apikey: ${BMAP_KEY}" -H "Content-Type: application/json" \
+                "${BMAP_API}/cards/${CID}" -d '{"column_id":92}' > /dev/null
+              echo "Reopened CI failure card #${CID}"
+            else
+              echo "Updated CI failure card #${CID}"
+            fi
+          else
+            # First failure: create the card
+            DESC="${DETAIL}. Check gh run view ${GITHUB_RUN_ID} --log-failed for details."
+            BODY=$(CARD_TITLE="$CARD_TITLE" DESC="$DESC" node -e '
+              console.log(JSON.stringify({
+                title:process.env.CARD_TITLE,
+                description:"<p>"+process.env.DESC+"</p>",
+                column_id:92,workflow_id:6,lane_id:6,color:"cc4444"
+              }))')
+            curl -s -X POST -H "apikey: ${BMAP_KEY}" -H "Content-Type: application/json" \
+              "${BMAP_API}/cards" -d "$BODY" > /dev/null
+            echo "Created CI failure card"
+          fi
+
+      - name: Close CI failure card on success
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          BMAP_KEY: ${{ secrets.BUSINESSMAP_API_KEY }}
+          BMAP_API: https://smagile.kanbanize.com/api/v2
+        run: |
+          if [ -z "$BMAP_KEY" ]; then exit 0; fi
+          CARD_TITLE="CI failure: smagile.co"
+          # Find open CI failure card (not in Closed 32 or Archive 33)
+          CID=$(curl -s -H "apikey: ${BMAP_KEY}" \
+            "${BMAP_API}/cards?board_ids=4&per_page=200" | \
+            CARD_TITLE="$CARD_TITLE" node -e '
+              let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{
+                const cards=(JSON.parse(d).data||{}).data||[];
+                const m=cards.find(c=>c.title===process.env.CARD_TITLE&&c.column_id!==32&&c.column_id!==33);
+                if(m)process.stdout.write(String(m.card_id));
+              })')
+          if [ -n "$CID" ]; then
+            curl -s -X POST -H "apikey: ${BMAP_KEY}" -H "Content-Type: application/json" \
+              "${BMAP_API}/cards/${CID}/comments" \
+              -d "$(node -e "console.log(JSON.stringify({text:'CI green on commit '+process.argv[1]+'. Auto-closing.'}))" "${GITHUB_SHA::8}")" > /dev/null
+            curl -s -X PATCH -H "apikey: ${BMAP_KEY}" -H "Content-Type: application/json" \
+              "${BMAP_API}/cards/${CID}" -d '{"column_id":32}' > /dev/null
+            echo "Closed CI failure card #${CID}"
+          fi
