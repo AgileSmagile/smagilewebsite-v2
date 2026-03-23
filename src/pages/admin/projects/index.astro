@@ -613,6 +613,13 @@ function funnelPct(value: number, max: number): number {
                   sparkline={extractSparkline(sHistory, 'test_count')}
                 />
                 <StatCard
+                  label="Coverage"
+                  value={formatPct(sLatest.test_coverage_pct)}
+                  subtitle="Test coverage"
+                  trend={getTrend(sLatest.test_coverage_pct, sPrev?.test_coverage_pct)}
+                  sparkline={extractSparkline(sHistory, 'test_coverage_pct')}
+                />
+                <StatCard
                   label="Vulnerabilities"
                   value={formatNumber((sLatest.vuln_critical ?? 0) + (sLatest.vuln_high ?? 0) + (sLatest.vuln_moderate ?? 0))}
                   subtitle={sLatest.vuln_critical
@@ -623,6 +630,9 @@ function funnelPct(value: number, max: number): number {
                     (sPrev?.vuln_critical ?? 0) + (sPrev?.vuln_high ?? 0),
                   ))}
                 />
+              </div>
+
+              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
                 <StatCard
                   label="Build Time"
                   value={formatDuration(sLatest.build_time_ms)}
@@ -630,9 +640,6 @@ function funnelPct(value: number, max: number): number {
                   trend={invertTrend(getTrend(sLatest.build_time_ms, sPrev?.build_time_ms))}
                   sparkline={extractSparkline(sHistory, 'build_time_ms')}
                 />
-              </div>
-
-              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
                 <StatCard
                   label="Lint Errors"
                   value={formatNumber(sLatest.lint_errors)}
@@ -655,6 +662,9 @@ function funnelPct(value: number, max: number): number {
                   sparkline={extractSparkline(sHistory, 'type_safety_any_count')}
                   tooltip="Count of 'any' type annotations — lower is better"
                 />
+              </div>
+
+              <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
                 <StatCard
                   label="Change Velocity"
                   value={sLatest.insertions_30d !== null
