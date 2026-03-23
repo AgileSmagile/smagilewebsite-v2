@@ -5,5 +5,10 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     exclude: ['node_modules', 'dist', '.astro'],
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      include: ['src/lib/**', 'src/middleware.ts'],
+      reporter: ['text', 'json-summary'],
+    },
   },
 });
