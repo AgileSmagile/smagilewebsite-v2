@@ -20,8 +20,6 @@ export async function GET(_context: APIContext) {
     timestamp: new Date().toISOString(),
     uptime: Math.round(process.uptime() * 10) / 10,
     version: getVersion(),
-    node: process.version,
-    memory: Math.round((process.memoryUsage().rss / 1024 / 1024) * 10) / 10,
   };
 
   return new Response(JSON.stringify(body), {

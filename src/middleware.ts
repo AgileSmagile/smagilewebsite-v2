@@ -6,6 +6,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'Content-Security-Policy': [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
@@ -57,21 +58,24 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
 
-    // CSRF origin validation for mutating API requests
+    // CSRF origin validation for all mutating admin requests
     const method = context.request.method;
-    if (
-      ['POST', 'PUT', 'DELETE'].includes(method) &&
-      pathname.startsWith('/admin/api/')
-    ) {
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
       const origin = context.request.headers.get('origin');
+      const referer = context.request.headers.get('referer');
       const host = context.request.headers.get('host');
-      if (origin && host) {
-        // Compare hostnames only (strip port from host, strip scheme from origin)
-        const originHost = new URL(origin).hostname;
+
+      // Determine the source hostname from Origin or Referer
+      const sourceHeader = origin || referer;
+      if (sourceHeader && host) {
+        const sourceHost = new URL(sourceHeader).hostname;
         const requestHost = host.split(':')[0];
-        if (originHost !== requestHost) {
+        if (sourceHost !== requestHost) {
           return new Response('Invalid origin', { status: 403 });
         }
+      } else if (!sourceHeader) {
+        // Neither Origin nor Referer present; reject the request
+        return new Response('Missing origin', { status: 403 });
       }
     }
   }

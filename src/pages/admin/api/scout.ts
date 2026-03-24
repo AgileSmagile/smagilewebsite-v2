@@ -38,9 +38,14 @@ export async function POST({ request }: APIContext) {
     return jsonError('Company name is required', 400);
   }
 
+  const sourceUrl = typeof body.sourceUrl === 'string' ? body.sourceUrl.trim() : '';
+  if (sourceUrl && !sourceUrl.startsWith('https://') && !sourceUrl.startsWith('http://')) {
+    return jsonError('Source URL must use http:// or https://', 400);
+  }
+
   try {
     const insight = addInsight({
-      sourceUrl: typeof body.sourceUrl === 'string' ? body.sourceUrl.trim() : '',
+      sourceUrl,
       selectedText: typeof body.selectedText === 'string' ? body.selectedText.trim() : '',
       companyName,
       notes: typeof body.notes === 'string' ? body.notes.trim() : '',
