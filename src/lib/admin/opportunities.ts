@@ -1,4 +1,7 @@
 import { getSupabaseAdmin } from './supabase';
+import { cacheGet, cacheSet } from './cache';
+
+const CACHE_TTL_OPPORTUNITIES = 60 * 1000; // 60 seconds
 
 export interface JobOpportunity {
   id: string;
@@ -40,8 +43,13 @@ export interface OpportunityFilters {
 
 /**
  * Fetch active job opportunities (excludes aged and removed) with filtering.
+ * Results are cached for 60 seconds keyed by filter combination.
  */
 export async function getOpportunities(filters: OpportunityFilters = {}): Promise<JobOpportunity[]> {
+  const cacheKey = `opportunities:${JSON.stringify(filters)}`;
+  const cached = cacheGet<JobOpportunity[]>(cacheKey);
+  if (cached) return cached;
+
   const sb = getSupabaseAdmin();
   if (!sb) return [];
 
@@ -82,7 +90,9 @@ export async function getOpportunities(filters: OpportunityFilters = {}): Promis
     return [];
   }
 
-  return (data || []) as JobOpportunity[];
+  const result = (data || []) as JobOpportunity[];
+  cacheSet(cacheKey, result, CACHE_TTL_OPPORTUNITIES);
+  return result;
 }
 
 /** Count by source for display. */
@@ -128,12 +138,16 @@ export async function getOpportunitySummary(): Promise<OpportunitySummary> {
 /**
  * Fetch emergency job opportunities (inside IR35 and unknown).
  * Excludes aged and removed. Supports recency filtering.
- * Sorted by match score descending.
+ * Sorted by match score descending. Cached for 60 seconds.
  */
 export async function getEmergencyOpportunities(
   statusFilter?: string,
   recencyDays?: number,
 ): Promise<JobOpportunity[]> {
+  const cacheKey = `opportunities:emergency:${statusFilter ?? 'all'}:${recencyDays ?? 'all'}`;
+  const cached = cacheGet<JobOpportunity[]>(cacheKey);
+  if (cached) return cached;
+
   const sb = getSupabaseAdmin();
   if (!sb) return [];
 
@@ -162,7 +176,9 @@ export async function getEmergencyOpportunities(
     return [];
   }
 
-  return (data || []) as JobOpportunity[];
+  const result = (data || []) as JobOpportunity[];
+  cacheSet(cacheKey, result, CACHE_TTL_OPPORTUNITIES);
+  return result;
 }
 
 /**
@@ -204,9 +220,13 @@ export async function getEmergencyOpportunitySummary(
 
 /**
  * Fetch active outside IR35 opportunities for the partner network view.
- * Excludes aged opportunities, sorted by date posted descending.
+ * Excludes aged opportunities, sorted by date posted descending. Cached for 60 seconds.
  */
 export async function getPartnerOpportunities(): Promise<JobOpportunity[]> {
+  const cacheKey = 'opportunities:partner';
+  const cached = cacheGet<JobOpportunity[]>(cacheKey);
+  if (cached) return cached;
+
   const sb = getSupabaseAdmin();
   if (!sb) return [];
 
@@ -222,5 +242,7 @@ export async function getPartnerOpportunities(): Promise<JobOpportunity[]> {
     return [];
   }
 
-  return (data || []) as JobOpportunity[];
+  const result = (data || []) as JobOpportunity[];
+  cacheSet(cacheKey, result, CACHE_TTL_OPPORTUNITIES);
+  return result;
 }

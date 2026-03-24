@@ -3,7 +3,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import OpportunityStatusScript from '../../../components/admin/OpportunityStatusScript.astro';
-import { getEmergencyOpportunities, getEmergencyOpportunitySummary } from '../../../lib/admin/opportunities';
+import { getEmergencyOpportunities, type OpportunitySummary } from '../../../lib/admin/opportunities';
 import { getProfileByEmail, scoreOpportunity, type ProfileMatchResult } from '../../../lib/admin/profile-matching';
 import { formatRate, formatDate, scoreColour, scoreBg } from '../../../lib/admin/format';
 import { buildFilterUrl } from '../../../lib/admin/filter-url';
@@ -15,8 +15,21 @@ const statusFilter = Astro.url.searchParams.get('status') || 'all';
 const recencyParam = Astro.url.searchParams.get('recency') || '7';
 const recencyDays = recencyParam === 'all' ? undefined : (Number.isNaN(parseInt(recencyParam, 10)) ? 7 : parseInt(recencyParam, 10));
 
-const opportunities = await getEmergencyOpportunities(statusFilter, recencyDays);
-const summary = await getEmergencyOpportunitySummary(recencyDays);
+// Fetch all emergency opportunities for this recency window (no status filter),
+// derive summary counts in memory, then apply the status filter in JS.
+const allEmergencyOpps = await getEmergencyOpportunities('all', recencyDays);
+
+const summary: OpportunitySummary = { total: allEmergencyOpps.length, new: 0, seen: 0, applied: 0, highMatch: 0 };
+for (const opp of allEmergencyOpps) {
+  if (opp.status === 'new') summary.new++;
+  else if (opp.status === 'seen') summary.seen++;
+  else if (opp.status === 'applied') summary.applied++;
+  if ((opp.match_score ?? 0) >= 60) summary.highMatch++;
+}
+
+const opportunities = statusFilter === 'all'
+  ? allEmergencyOpps
+  : allEmergencyOpps.filter((o) => o.status === statusFilter);
 
 // Fetch user's Mosaic CV profile for matching
 const cfEmail = Astro.request.headers.get('Cf-Access-Authenticated-User-Email');

@@ -299,9 +299,14 @@ async function fetchAiUsageMetrics(): Promise<AiUsageMetrics | null> {
   if (!sb) return null;
 
   try {
+    // Bound to last 90 days and cap at 5000 rows to avoid unbounded fetches
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
     const { data, error } = await sb
       .from('ai_usage')
-      .select('user_id, interaction_type, tokens_used');
+      .select('user_id, interaction_type, tokens_used')
+      .gte('created_at', ninetyDaysAgo)
+      .limit(5000);
 
     if (error) {
       console.error('[Metrics] ai_usage query failed:', error.message);
@@ -359,7 +364,7 @@ async function fetchFunnelMetrics(): Promise<FunnelMetrics | null> {
   try {
     const [profilesRes, docsRes] = await Promise.all([
       sb.from('profiles').select('id', { count: 'exact', head: true }),
-      sb.from('cv_documents').select('user_id, file_url'),
+      sb.from('cv_documents').select('user_id, file_url').limit(5000),
     ]);
 
     const totalSignups = profilesRes.count ?? 0;
@@ -419,16 +424,18 @@ export async function fetchPipelineMetrics(): Promise<PipelineMetrics | null> {
   if (!sb) return null;
 
   try {
-    // Fetch documents and variants with pipeline timing
+    // Fetch documents and variants with pipeline timing (bounded to prevent unbounded fetches)
     const [docsRes, variantsRes] = await Promise.all([
       sb
         .from('cv_documents')
         .select('id, pipeline_started_at, pipeline_completed_at, pipeline_duration_ms, pipeline_status, created_at, config')
-        .not('pipeline_duration_ms', 'is', null),
+        .not('pipeline_duration_ms', 'is', null)
+        .limit(2000),
       sb
         .from('cv_variants')
         .select('id, document_id, pipeline_started_at, pipeline_completed_at, pipeline_duration_ms, pipeline_status, created_at')
-        .not('pipeline_duration_ms', 'is', null),
+        .not('pipeline_duration_ms', 'is', null)
+        .limit(2000),
     ]);
 
     if (docsRes.error) {
@@ -460,6 +467,7 @@ export async function fetchPipelineMetrics(): Promise<PipelineMetrics | null> {
             .from('pipeline_stage_executions')
             .select('document_id, stage_id, duration_ms, status')
             .in('document_id', docIds)
+            .limit(5000)
             .then(({ data, error }) => {
               if (error) {
                 console.error('[Metrics] pipeline stages (docs) query failed:', error.message);
@@ -485,6 +493,7 @@ export async function fetchPipelineMetrics(): Promise<PipelineMetrics | null> {
             .from('pipeline_stage_executions')
             .select('variant_id, stage_id, duration_ms, status')
             .in('variant_id', variantIds)
+            .limit(5000)
             .then(({ data, error }) => {
               if (error) {
                 console.error('[Metrics] pipeline stages (variants) query failed:', error.message);

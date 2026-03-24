@@ -3,7 +3,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import OpportunityStatusScript from '../../../components/admin/OpportunityStatusScript.astro';
-import { getOpportunities, getOpportunitySummary, getSourceCounts } from '../../../lib/admin/opportunities';
+import { getOpportunities, type OpportunitySummary } from '../../../lib/admin/opportunities';
 import { formatRate, formatDate, scoreColour, scoreBg } from '../../../lib/admin/format';
 import { buildFilterUrl } from '../../../lib/admin/filter-url';
 
@@ -31,8 +31,17 @@ const activeOpps = rawOpportunities.filter((o) => o.status !== 'applied' && o.st
 const demotedOpps = rawOpportunities.filter((o) => o.status === 'applied' || o.status === 'seen');
 const opportunities = [...activeOpps, ...demotedOpps];
 
-const summary = await getOpportunitySummary();
-const sourceCounts = await getSourceCounts();
+// Derive summary and source counts from the unfiltered dataset (single DB call)
+const allOpportunities = await getOpportunities();
+const summary: OpportunitySummary = { total: allOpportunities.length, new: 0, seen: 0, applied: 0, highMatch: 0 };
+const sourceCounts: Record<string, number> = {};
+for (const opp of allOpportunities) {
+  if (opp.status === 'new') summary.new++;
+  else if (opp.status === 'seen') summary.seen++;
+  else if (opp.status === 'applied') summary.applied++;
+  if ((opp.match_score ?? 0) >= 60) summary.highMatch++;
+  sourceCounts[opp.source] = (sourceCounts[opp.source] ?? 0) + 1;
+}
 
 const filterDefaults: Record<string, string> = {
   status: 'all', source: 'all', min_score: '0', min_rate: '0', sort: 'score', hide_seen: '0',
