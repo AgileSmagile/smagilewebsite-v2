@@ -14,4 +14,29 @@ const blog = defineCollection({
   }),
 });
 
-export const collections = { blog };
+const tools = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/tools' }),
+  schema: z.object({
+    name: z.string(),
+    slug: z.string(),
+    logo: z.string().optional(),
+    description: z.string(),
+    category: z.enum([
+      'project management',
+      'analytics',
+      'monitoring',
+      'CRM',
+      'collaboration',
+      'survey',
+      'hosting',
+      'productivity',
+    ]),
+    affiliateUrl: z.string().url().optional(),
+    websiteUrl: z.string().url(),
+    keyFeatures: z.array(z.string()).default([]),
+    recommendation: z.string().optional(),
+    featured: z.boolean().default(false),
+  }),
+});
+
+export const collections = { blog, tools };

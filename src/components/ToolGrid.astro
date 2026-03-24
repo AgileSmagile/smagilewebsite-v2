@@ -1,0 +1,182 @@
+---
+import { getCollection } from 'astro:content';
+import ToolCard from './ToolCard.astro';
+
+interface Props {
+  /** Show only featured tools */
+  featuredOnly?: boolean;
+  /** Filter by category */
+  category?: string;
+  /** Maximum number of tools to display */
+  limit?: number;
+  /** Display mode: 'grid' for static grid, 'carousel' for sliding carousel */
+  mode?: 'grid' | 'carousel';
+  /** Section heading (optional, omit to render cards only) */
+  heading?: string;
+  /** Section subheading */
+  subheading?: string;
+}
+
+const {
+  featuredOnly = false,
+  category,
+  limit,
+  mode = 'grid',
+  heading,
+  subheading,
+} = Astro.props;
+
+let tools = await getCollection('tools');
+
+if (featuredOnly) {
+  tools = tools.filter((t) => t.data.featured);
+}
+if (category) {
+  tools = tools.filter((t) => t.data.category === category);
+}
+
+// Sort featured items first, then alphabetically by name
+tools.sort((a, b) => {
+  if (a.data.featured !== b.data.featured) return a.data.featured ? -1 : 1;
+  return a.data.name.localeCompare(b.data.name);
+});
+
+if (limit && limit > 0) {
+  tools = tools.slice(0, limit);
+}
+
+const carouselId = `tool-carousel-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+{tools.length > 0 && (
+  <div>
+    {heading && (
+      <div class="text-center mb-12">
+        <h2 class="text-2xl sm:text-3xl font-bold text-grey-800 dark:text-white font-heading">
+          {heading}
+        </h2>
+        <div class="mt-4 mx-auto w-16 divider-gold"></div>
+        {subheading && (
+          <p class="mt-4 text-grey-700 dark:text-warm-200 max-w-2xl mx-auto leading-relaxed">
+            {subheading}
+          </p>
+        )}
+      </div>
+    )}
+
+    {mode === 'grid' ? (
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {tools.map((tool) => (
+          <ToolCard
+            name={tool.data.name}
+            slug={tool.data.slug}
+            logo={tool.data.logo}
+            description={tool.data.description}
+            category={tool.data.category}
+            websiteUrl={tool.data.websiteUrl}
+            featured={tool.data.featured}
+          />
+        ))}
+      </div>
+    ) : (
+      <div id={carouselId} class="relative" data-tool-carousel>
+        <!-- Carousel track -->
+        <div class="overflow-hidden rounded-xl">
+          <div class="tool-carousel-track flex transition-transform duration-500 ease-in-out">
+            {tools.map((tool, i) => (
+              <div class="tool-carousel-slide w-full shrink-0 px-1" data-index={i}>
+                <ToolCard
+                  name={tool.data.name}
+                  slug={tool.data.slug}
+                  logo={tool.data.logo}
+                  description={tool.data.description}
+                  category={tool.data.category}
+                  websiteUrl={tool.data.websiteUrl}
+                  featured={tool.data.featured}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- Navigation arrows -->
+        <button
+          class="tool-carousel-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 sm:-translate-x-5 w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-600 shadow-lg text-primary dark:text-secondary hover:bg-secondary-50 dark:hover:bg-grey-700 transition-colors"
+          aria-label="Previous tool"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <button
+          class="tool-carousel-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 sm:translate-x-5 w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-600 shadow-lg text-primary dark:text-secondary hover:bg-secondary-50 dark:hover:bg-grey-700 transition-colors"
+          aria-label="Next tool"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <!-- Dots -->
+        <div class="tool-carousel-dots flex justify-center gap-2 mt-6">
+          {tools.map((_, i) => (
+            <button
+              class="tool-carousel-dot w-2.5 h-2.5 rounded-full bg-secondary-200 dark:bg-grey-600 transition-colors"
+              data-index={i}
+              aria-label={`Go to tool ${i + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+<script>
+  document.querySelectorAll<HTMLDivElement>('[data-tool-carousel]').forEach((carousel) => {
+    const track = carousel.querySelector<HTMLDivElement>('.tool-carousel-track');
+    const dots = carousel.querySelectorAll<HTMLButtonElement>('.tool-carousel-dot');
+    const prevBtn = carousel.querySelector<HTMLButtonElement>('.tool-carousel-prev');
+    const nextBtn = carousel.querySelector<HTMLButtonElement>('.tool-carousel-next');
+    if (!track || !prevBtn || !nextBtn) return;
+
+    const slides = track.querySelectorAll<HTMLDivElement>('.tool-carousel-slide');
+    const total = slides.length;
+    if (total === 0) return;
+
+    let current = Math.floor(Math.random() * total);
+
+    function goTo(index: number) {
+      current = ((index % total) + total) % total;
+      track!.style.transform = `translateX(-${current * 100}%)`;
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('bg-primary', i === current);
+        dot.classList.toggle('dark:bg-secondary', i === current);
+        dot.classList.toggle('bg-secondary-200', i !== current);
+        dot.classList.toggle('dark:bg-grey-600', i !== current);
+      });
+    }
+
+    prevBtn.addEventListener('click', () => goTo(current - 1));
+    nextBtn.addEventListener('click', () => goTo(current + 1));
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => goTo(Number(dot.dataset.index)));
+    });
+
+    // Keyboard navigation
+    carousel.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') goTo(current - 1);
+      if (e.key === 'ArrowRight') goTo(current + 1);
+    });
+
+    // Touch swipe
+    let touchStartX = 0;
+    track.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    track.addEventListener('touchend', (e) => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) goTo(current + (diff > 0 ? 1 : -1));
+    });
+
+    goTo(current);
+  });
+</script>
