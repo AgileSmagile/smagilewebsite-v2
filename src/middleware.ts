@@ -39,11 +39,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     if (!isLocal) {
       const cfEmail = context.request.headers.get('Cf-Access-Authenticated-User-Email');
-      const cfServiceToken = context.request.headers.get('Cf-Access-Client-Id');
+      const cfJwt = context.request.headers.get('Cf-Access-Jwt-Assertion');
       const isApiRoute = pathname.startsWith('/admin/api/');
 
-      // Service tokens (validated by CF Access) are allowed on API routes only
-      const isServiceAuth = isApiRoute && cfServiceToken;
+      // Service tokens (validated by CF Access) produce a JWT but no email.
+      // Allow these on API routes only.
+      const isServiceAuth = isApiRoute && cfJwt && !cfEmail;
 
       if (!cfEmail && !isServiceAuth) {
         return new Response('Unauthorised', { status: 403 });
