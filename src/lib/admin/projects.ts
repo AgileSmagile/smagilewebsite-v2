@@ -8,8 +8,21 @@ export interface ProjectInfo {
   vercelProject?: string;
 }
 
-/** Project registry - add new projects here. */
+/** Tab registry for the Projects & Agents page. */
 export const projects: ProjectInfo[] = [
+  {
+    id: 'hardware',
+    name: 'Hardware',
+    description: 'Pi health, services and agent status',
+    url: '',
+  },
+  {
+    id: 'smagile-co',
+    name: 'smagile.co',
+    description: 'Company website with admin dashboard (Mission Control)',
+    url: 'smagile.co',
+    githubRepo: 'AgileSmagile/smagilewebsite-v2',
+  },
   {
     id: 'mosaic-cv',
     name: 'Mosaic CV',
@@ -20,11 +33,10 @@ export const projects: ProjectInfo[] = [
     vercelProject: 'mosaic',
   },
   {
-    id: 'smagile-co',
-    name: 'smagile.co',
-    description: 'Company website with admin dashboard (Mission Control)',
-    url: 'smagile.co',
-    githubRepo: 'AgileSmagile/smagilewebsite-v2',
+    id: 'n8n',
+    name: 'n8n',
+    description: 'Workflow automation on Clawbox Pi5',
+    url: 'n8n.smagile.co',
   },
 ];
 

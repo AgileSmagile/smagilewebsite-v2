@@ -3,11 +3,13 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import AgentCard from '../../../components/admin/AgentCard.astro';
+import PiHealthPanel from '../../../components/admin/PiHealthPanel.astro';
 import CodeHealthPanel from '../../../components/admin/CodeHealthPanel.astro';
 import CycleTimeChart from '../../../components/admin/CycleTimeChart.astro';
 import { getAgentStatuses } from '../../../lib/admin/agents';
 import { projects, type ProjectInfo } from '../../../lib/admin/projects';
 import { getSupabaseAdmin } from '../../../lib/admin/supabase';
+import { getClawboxHealth, getWebserverHealth } from '../../../lib/admin/hardware';
 import {
   getMosaicMetrics,
   getSmagileWebsiteMetrics,
@@ -27,17 +29,19 @@ export const prerender = false;
 const supabaseConfigured = !!getSupabaseAdmin();
 
 // Fetch all data in parallel
-const [agents, mosaicMetrics, smagileMetrics] = await Promise.all([
+const [agents, mosaicMetrics, smagileMetrics, clawboxHealth, webserverHealth] = await Promise.all([
   getAgentStatuses(),
   supabaseConfigured ? getMosaicMetrics() : null,
   supabaseConfigured ? getSmagileWebsiteMetrics() : null,
+  getClawboxHealth(),
+  getWebserverHealth(),
 ]);
 
 const onlineCount = agents.filter((a) => a.status === 'online').length;
 const totalAgentCount = agents.length;
 
-// Determine active project tab from query string
-const activeTab = Astro.url.searchParams.get('project') ?? 'mosaic-cv';
+// Determine active tab from query string (default: hardware)
+const activeTab = Astro.url.searchParams.get('project') ?? 'hardware';
 
 // Pipeline time window
 const windowParam = Astro.url.searchParams.get('window');
@@ -89,7 +93,7 @@ function funnelPct(value: number, max: number): number {
     { label: 'Projects & Agents' },
   ]} />
 
-  {/* ── Project tabs ── */}
+  {/* ── Tabs ── */}
   <nav class="flex gap-1 mb-6 border-b border-grey-700" aria-label="Project tabs">
     {projects.map((project) => (
       <a
@@ -106,7 +110,142 @@ function funnelPct(value: number, max: number): number {
     ))}
   </nav>
 
-  {/* ── Mosaic CV ── */}
+  {/* ══════════════════════════════════════════════
+       TAB 1: Hardware
+     ══════════════════════════════════════════════ */}
+  {activeTab === 'hardware' && (
+    <div>
+      <div class="mb-4">
+        <h2 class="text-xl font-bold text-white font-heading">Hardware &amp; Agents</h2>
+        <p class="mt-0.5 text-sm text-warm-300">Infrastructure health and agent status</p>
+      </div>
+
+      {/* ── Pi Health Panels ── */}
+      <section class="mb-6">
+        <h3 class="text-lg font-semibold text-white mb-3">Pi Health</h3>
+        <div class="grid gap-4 grid-cols-1 lg:grid-cols-2">
+          <PiHealthPanel health={clawboxHealth} label="Clawbox (Pi5)" />
+          <PiHealthPanel health={webserverHealth} label="Webserver (Pi3B+)" />
+        </div>
+      </section>
+
+      {/* ── Agent Status ── */}
+      <section class="mb-6">
+        <div class="mb-3">
+          <h3 class="text-lg font-semibold text-white">Agent Status</h3>
+          <p class="mt-0.5 text-sm text-warm-300">
+            {onlineCount} of {totalAgentCount} agents reporting
+          </p>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {agents.map((agent) => (
+            <AgentCard agent={agent} />
+          ))}
+        </div>
+
+        {agents.length === 0 && (
+          <div class="text-center py-12">
+            <p class="text-warm-300">No agents registered.</p>
+          </div>
+        )}
+      </section>
+    </div>
+  )}
+
+  {/* ══════════════════════════════════════════════
+       TAB 2: smagile.co
+     ══════════════════════════════════════════════ */}
+  {activeTab === 'smagile-co' && (() => {
+    const sch = smagileMetrics?.codeHealth;
+    const sLatest = sch?.latest;
+    const sPrev = sch?.previous;
+    const sHistory = sch?.history ?? [];
+    return (
+      <div>
+        <div class="mb-4">
+          <h2 class="text-xl font-bold text-white font-heading">smagile.co</h2>
+          <p class="mt-0.5 text-sm text-warm-300">Company website and Mission Control</p>
+        </div>
+
+        {/* Connection error */}
+        {supabaseConfigured && smagileMetrics && smagileMetrics.errors.length > 0 && (
+          <div class="p-4 mb-4 bg-red-900/30 rounded-xl border border-red-700/50">
+            <p class="text-sm font-medium text-red-200 mb-2">Some metrics failed to load</p>
+            <ul class="text-xs text-red-300/80 space-y-1">
+              {smagileMetrics.errors.map((e) => (
+                <li>{e.section}: {e.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ── Code Health ── */}
+        {sLatest ? (
+          <div class="mb-6">
+            <CodeHealthPanel latest={sLatest} previous={sPrev} history={sHistory} />
+          </div>
+        ) : supabaseConfigured ? (
+          <div class="p-4 mb-6 bg-grey-800 rounded-xl border border-grey-700">
+            <p class="text-sm text-warm-300">No code health snapshots found. Data is collected on each push to main.</p>
+          </div>
+        ) : (
+          <div class="p-4 mb-6 bg-amber-900/30 rounded-xl border border-amber-700/50">
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-amber-200">Supabase not configured</p>
+                <p class="mt-1 text-xs text-amber-300/80">
+                  Add <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_URL</code> and
+                  <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> to your
+                  <code class="font-mono bg-amber-900/50 px-1 rounded">.env</code> file to enable live metrics.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Infrastructure ── */}
+        <section class="mb-6">
+          <h3 class="text-lg font-semibold text-white mb-3">Infrastructure</h3>
+          <div class="grid gap-3 grid-cols-2 lg:grid-cols-3">
+            <StatCard label="Hosting" value="Raspberry Pi" subtitle="Behind Cloudflare tunnel" />
+            <StatCard label="Framework" value="Astro 5" subtitle="SSR with @astrojs/node" />
+            <StatCard label="Repository" value="GitHub" subtitle="AgileSmagile/smagilewebsite-v2" />
+          </div>
+        </section>
+
+        {/* ── Tech Stack (collapsible) ── */}
+        <section class="mb-6">
+          <details class="bg-grey-800 rounded-xl border border-grey-700">
+            <summary class="px-4 py-3 text-xs font-medium text-warm-300 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none">
+              Tech Stack
+            </summary>
+            <div class="px-4 pb-3 space-y-1">
+              {[
+                ['Astro 5', 'SSR with @astrojs/node'],
+                ['Tailwind CSS 4', 'Styling'],
+                ['Supabase', 'Shared instance (Mosaic CV)'],
+                ['Cloudflare', 'Tunnel, Access, DNS'],
+                ['Raspberry Pi 3B+', 'Hosting'],
+              ].map(([tool, purpose]) => (
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-white font-mono">{tool}</span>
+                  <span class="text-warm-300 truncate ml-2">{purpose}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        </section>
+      </div>
+    );
+  })()}
+
+  {/* ══════════════════════════════════════════════
+       TAB 3: Mosaic CV
+     ══════════════════════════════════════════════ */}
   {activeTab === 'mosaic-cv' && (
     <div>
       <div class="mb-4">
@@ -311,7 +450,6 @@ function funnelPct(value: number, max: number): number {
       <section class="mb-6">
         <h3 class="text-lg font-semibold text-white mb-3">Operational Metrics</h3>
         <div class="grid gap-3 grid-cols-2 lg:grid-cols-3">
-          {/* Live metrics from code health snapshots */}
           {latest ? (
             <>
               <StatCard
@@ -328,7 +466,7 @@ function funnelPct(value: number, max: number): number {
                 subtitle="Production bundle"
                 trend={invertTrend(getTrend(latest.bundle_size_kb, prev?.bundle_size_kb))}
                 sparkline={extractSparkline(history, 'bundle_size_kb')}
-                tooltip="Total production bundle size — lower is better"
+                tooltip="Total production bundle size"
               />
               <StatCard
                 label="Type Safety"
@@ -336,7 +474,7 @@ function funnelPct(value: number, max: number): number {
                 subtitle="'any' usages"
                 trend={invertTrend(getTrend(latest.type_safety_any_count, prev?.type_safety_any_count))}
                 sparkline={extractSparkline(history, 'type_safety_any_count')}
-                tooltip="Count of 'any' type annotations — lower is better"
+                tooltip="Count of 'any' type annotations"
               />
             </>
           ) : (
@@ -359,19 +497,13 @@ function funnelPct(value: number, max: number): number {
             </>
           )}
 
-          {/* Placeholder metrics — awaiting data collection */}
           <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
-            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider" title="Time to Value: average time from signup to first CV generation">Time to Value</p>
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Time to Value</p>
             <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
             <p class="mt-1 text-xs text-grey-600">Average time from signup to first CV export</p>
           </div>
           <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
-            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Infrastructure Health</p>
-            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
-            <p class="mt-1 text-xs text-grey-600" title="Raspberry Pi CPU, memory and disk usage">Pi CPU / memory / disk via SSH probe</p>
-          </div>
-          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
-            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider" title="p95 Response Time: 95th percentile server response time">p95 Response Time</p>
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">p95 Response Time</p>
             <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
             <p class="mt-1 text-xs text-grey-600">95th percentile server latency</p>
           </div>
@@ -425,113 +557,71 @@ function funnelPct(value: number, max: number): number {
     </div>
   )}
 
-  {/* ── smagile.co ── */}
-  {activeTab === 'smagile-co' && (() => {
-    const sch = smagileMetrics?.codeHealth;
-    const sLatest = sch?.latest;
-    const sPrev = sch?.previous;
-    const sHistory = sch?.history ?? [];
-    return (
-      <div>
-        <div class="mb-4">
-          <h2 class="text-xl font-bold text-white font-heading">smagile.co</h2>
-          <p class="mt-0.5 text-sm text-warm-300">Company website and Mission Control</p>
+  {/* ══════════════════════════════════════════════
+       TAB 4: n8n
+     ══════════════════════════════════════════════ */}
+  {activeTab === 'n8n' && (
+    <div>
+      <div class="mb-4">
+        <h2 class="text-xl font-bold text-white font-heading">n8n</h2>
+        <p class="mt-0.5 text-sm text-warm-300">n8n.smagile.co &middot; Workflow automation on Clawbox Pi5</p>
+      </div>
+
+      {/* Status from Clawbox health */}
+      <section class="mb-6">
+        <h3 class="text-lg font-semibold text-white mb-3">Status</h3>
+        <div class="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Service"
+            value={clawboxHealth.services?.n8n === 'active' ? 'Running' : 'Down'}
+            subtitle={clawboxHealth.services?.n8n === 'active' ? 'systemd active' : 'Check Clawbox'}
+          />
+          <StatCard label="Host" value="Clawbox Pi5" subtitle="Port 5678, via Cloudflare tunnel" />
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Active Workflows</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600">Requires n8n API key</p>
+          </div>
+          <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+            <p class="text-xs font-medium text-warm-300/60 uppercase tracking-wider">Executions (7d)</p>
+            <p class="mt-2 text-2xl font-bold text-grey-600 font-heading">--</p>
+            <p class="mt-1 text-xs text-grey-600">Requires n8n API key</p>
+          </div>
         </div>
+      </section>
 
-        {/* Connection error */}
-        {supabaseConfigured && smagileMetrics && smagileMetrics.errors.length > 0 && (
-          <div class="p-4 mb-4 bg-red-900/30 rounded-xl border border-red-700/50">
-            <p class="text-sm font-medium text-red-200 mb-2">Some metrics failed to load</p>
-            <ul class="text-xs text-red-300/80 space-y-1">
-              {smagileMetrics.errors.map((e) => (
-                <li>{e.section}: {e.message}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* ── Code Health ── */}
-        {sLatest ? (
-          <div class="mb-6">
-            <CodeHealthPanel latest={sLatest} previous={sPrev} history={sHistory} />
-          </div>
-        ) : supabaseConfigured ? (
-          <div class="p-4 mb-6 bg-grey-800 rounded-xl border border-grey-700">
-            <p class="text-sm text-warm-300">No code health snapshots found. Data is collected on each push to main.</p>
-          </div>
-        ) : (
-          <div class="p-4 mb-6 bg-amber-900/30 rounded-xl border border-amber-700/50">
-            <div class="flex items-start gap-3">
-              <svg class="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-              <div>
-                <p class="text-sm font-medium text-amber-200">Supabase not configured</p>
-                <p class="mt-1 text-xs text-amber-300/80">
-                  Add <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_URL</code> and
-                  <code class="font-mono bg-amber-900/50 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> to your
-                  <code class="font-mono bg-amber-900/50 px-1 rounded">.env</code> file to enable live metrics.
-                </p>
-              </div>
+      {/* Value tracking concept */}
+      <section class="mb-6">
+        <h3 class="text-lg font-semibold text-white mb-3">Value Tracking</h3>
+        <div class="p-4 bg-grey-800 rounded-xl border border-grey-700">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-secondary mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-white">Coming soon</p>
+              <p class="mt-1 text-xs text-warm-300">
+                Each workflow will track estimated time saved per execution. The dashboard will show total
+                automations run, cumulative time saved, and a per-workflow breakdown of value delivered.
+                Requires n8n API integration (API key) and a value annotation per workflow.
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* ── Infrastructure ── */}
-        <section class="mb-6">
-          <h3 class="text-lg font-semibold text-white mb-3">Infrastructure</h3>
-          <div class="grid gap-3 grid-cols-2 lg:grid-cols-3">
-            <StatCard label="Hosting" value="Raspberry Pi" subtitle="Behind Cloudflare tunnel" />
-            <StatCard label="Framework" value="Astro 5" subtitle="SSR with @astrojs/node" />
-            <StatCard label="Repository" value="GitHub" subtitle="AgileSmagile/smagilewebsite-v2" />
-          </div>
-        </section>
-
-        {/* ── Tech Stack (collapsible) ── */}
-        <section class="mb-6">
-          <details class="bg-grey-800 rounded-xl border border-grey-700">
-            <summary class="px-4 py-3 text-xs font-medium text-warm-300 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none">
-              Tech Stack
-            </summary>
-            <div class="px-4 pb-3 space-y-1">
-              {[
-                ['Astro 5', 'SSR with @astrojs/node'],
-                ['Tailwind CSS 4', 'Styling'],
-                ['Supabase', 'Shared instance (Mosaic CV)'],
-                ['Cloudflare', 'Tunnel, Access, DNS'],
-                ['Raspberry Pi 3B+', 'Hosting'],
-              ].map(([tool, purpose]) => (
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-white font-mono">{tool}</span>
-                  <span class="text-warm-300 truncate ml-2">{purpose}</span>
-                </div>
-              ))}
-            </div>
-          </details>
-        </section>
-      </div>
-    );
-  })()}
-
-  {/* ── Agent Status (always visible below project content) ── */}
-  <section class="mt-8 mb-8 pt-6 border-t border-grey-700">
-    <div class="mb-3">
-      <h2 class="text-xl font-bold text-white font-heading">Agent Status</h2>
-      <p class="mt-0.5 text-sm text-warm-300">
-        {onlineCount} of {totalAgentCount} agents online
-      </p>
+      {/* Placeholder for workflow list */}
+      <section class="mb-6">
+        <h3 class="text-lg font-semibold text-white mb-3">
+          Workflows
+          <span class="text-xs font-normal text-grey-500 ml-2">requires API key</span>
+        </h3>
+        <div class="p-4 bg-grey-800/50 rounded-xl border border-grey-700/50 border-dashed">
+          <p class="text-sm text-grey-500 text-center py-6">
+            Configure <code class="font-mono bg-grey-800 px-1 rounded">N8N_API_KEY</code> to load workflow data from n8n.smagile.co
+          </p>
+        </div>
+      </section>
     </div>
-
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {agents.map((agent) => (
-        <AgentCard agent={agent} />
-      ))}
-    </div>
-
-    {agents.length === 0 && (
-      <div class="text-center py-12">
-        <p class="text-warm-300">No agents registered.</p>
-      </div>
-    )}
-  </section>
+  )}
 </AdminLayout>

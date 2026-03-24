@@ -19,7 +19,7 @@ const registry: Omit<AgentInfo, 'status' | 'lastChecked' | 'responseTimeMs' | 'v
     id: 'clawdius',
     name: 'Clawdius',
     description: 'AI assistant running on Pi5, accessible via Discord',
-    healthUrl: null, // No HTTP endpoint yet
+    healthUrl: import.meta.env.CLAWBOX_HEALTH_URL || 'https://health-clawbox.smagile.co/health',
   },
   {
     id: 'smagile-xyz',

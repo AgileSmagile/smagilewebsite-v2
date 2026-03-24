@@ -1,0 +1,172 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import type { PiHealth } from '../../lib/admin/hardware';
+import { formatUptime, tempColour, diskColour } from '../../lib/admin/hardware';
+
+interface Props {
+  health: PiHealth;
+  label: string;
+}
+
+const { health, label } = Astro.props;
+const hasData = !health.error && health.temp !== null;
+const activeServices = Object.values(health.services).filter(s => s === 'active').length;
+const totalServices = Object.keys(health.services).length;
+const allHealthy = activeServices === totalServices && totalServices > 0;
+const memPct = health.mem_total && health.mem_used
+  ? Math.round((health.mem_used / health.mem_total) * 100)
+  : null;
+---
+
+<div class="p-5 bg-grey-800 rounded-xl border border-grey-700">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h3 class="text-base font-semibold text-white">{label}</h3>
+      <p class="text-xs text-warm-300">{health.platform} &middot; {health.hostname}</p>
+    </div>
+    <StatusBadge status={hasData ? (allHealthy ? 'online' : 'degraded') : 'offline'} />
+  </div>
+
+  {health.error ? (
+    <div class="p-3 bg-red-900/20 rounded-lg border border-red-700/30">
+      <p class="text-xs text-red-300">{health.error}</p>
+    </div>
+  ) : (
+    <>
+      {/* Primary stats row */}
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        {/* Temperature */}
+        <div class="text-center">
+          <p class="text-xs text-warm-300 mb-1">Temp</p>
+          <p class:list={['text-xl font-bold font-heading', health.temp ? tempColour(health.temp) : 'text-grey-500']}>
+            {health.temp !== null ? `${health.temp}°` : '--'}
+          </p>
+        </div>
+
+        {/* CPU Load */}
+        <div class="text-center">
+          <p class="text-xs text-warm-300 mb-1">Load</p>
+          <p class="text-xl font-bold font-heading text-white">
+            {health.load ? health.load.split(' ')[0] : '--'}
+          </p>
+        </div>
+
+        {/* Uptime */}
+        <div class="text-center">
+          <p class="text-xs text-warm-300 mb-1">Uptime</p>
+          <p class="text-xl font-bold font-heading text-white">
+            {health.uptime !== null ? formatUptime(health.uptime) : '--'}
+          </p>
+        </div>
+      </div>
+
+      {/* Memory bar */}
+      {memPct !== null && (
+        <div class="mb-3">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="text-warm-300">Memory</span>
+            <span class="text-white font-mono">{health.mem_used}MB / {health.mem_total}MB ({memPct}%)</span>
+          </div>
+          <div class="w-full bg-grey-700 rounded-full h-2">
+            <div
+              class:list={[
+                'rounded-full h-2 transition-all',
+                memPct >= 90 ? 'bg-red-500' : memPct >= 75 ? 'bg-amber-500' : 'bg-secondary',
+              ]}
+              style={`width: ${memPct}%`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Disk bars */}
+      <div class="space-y-2 mb-4">
+        {health.disk_root_pct !== null && (
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-warm-300">Disk (root)</span>
+              <span class:list={['font-mono', diskColour(health.disk_root_pct)]}>{health.disk_root_pct}%</span>
+            </div>
+            <div class="w-full bg-grey-700 rounded-full h-1.5">
+              <div
+                class:list={[
+                  'rounded-full h-1.5 transition-all',
+                  health.disk_root_pct >= 90 ? 'bg-red-500' : health.disk_root_pct >= 75 ? 'bg-amber-500' : 'bg-secondary',
+                ]}
+                style={`width: ${health.disk_root_pct}%`}
+              />
+            </div>
+          </div>
+        )}
+        {health.disk_usb_pct !== null && (
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-warm-300">USB storage</span>
+              <span class:list={['font-mono', diskColour(health.disk_usb_pct)]}>{health.disk_usb_pct}% ({health.disk_usb_avail} free)</span>
+            </div>
+            <div class="w-full bg-grey-700 rounded-full h-1.5">
+              <div
+                class:list={[
+                  'rounded-full h-1.5 transition-all',
+                  health.disk_usb_pct >= 90 ? 'bg-red-500' : health.disk_usb_pct >= 75 ? 'bg-amber-500' : 'bg-secondary',
+                ]}
+                style={`width: ${health.disk_usb_pct}%`}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Services */}
+      {totalServices > 0 && (
+        <div>
+          <p class="text-xs text-warm-300 mb-2">Services ({activeServices}/{totalServices})</p>
+          <div class="flex flex-wrap gap-1.5">
+            {Object.entries(health.services).map(([name, status]) => (
+              <span class:list={[
+                'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono',
+                status === 'active'
+                  ? 'bg-green-900/30 text-green-300 border border-green-700/30'
+                  : 'bg-red-900/30 text-red-300 border border-red-700/30',
+              ]}>
+                <span class:list={['w-1.5 h-1.5 rounded-full', status === 'active' ? 'bg-green-500' : 'bg-red-500']} />
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* OpenClaw info */}
+      {health.openclaw && (
+        <div class="mt-3 pt-3 border-t border-grey-700">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-warm-300">OpenClaw</span>
+            <span class="text-white font-mono">{health.openclaw.version}</span>
+          </div>
+          <div class="flex items-center justify-between text-xs mt-1">
+            <span class="text-warm-300">Agents</span>
+            <span class="text-white">{health.openclaw.agents.join(', ')}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Ollama models */}
+      {health.ollama && health.ollama.models.length > 0 && (
+        <div class="mt-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-warm-300">Ollama models</span>
+            <span class="text-white font-mono">{health.ollama.models.join(', ')}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Pulse freshness */}
+      <div class="mt-3 pt-3 border-t border-grey-700">
+        <p class="text-xs text-grey-500">
+          Data collected {new Date(health.collected_at).toLocaleTimeString('en-GB')}
+        </p>
+      </div>
+    </>
+  )}
+</div>
