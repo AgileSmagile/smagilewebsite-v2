@@ -1,0 +1,264 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../../components/admin/Breadcrumb.astro';
+import EmptyState from '../../../../components/admin/EmptyState.astro';
+import { getOutreachTemplates } from '../../../../lib/admin/outreach-templates';
+import { buildFilterUrl } from '../../../../lib/admin/filter-url';
+
+export const prerender = false;
+
+const sectorFilter = Astro.url.searchParams.get('sector') || 'all';
+
+const templates = await getOutreachTemplates(sectorFilter);
+
+// Group templates by sector for visual grouping
+const grouped = new Map<string, typeof templates>();
+for (const t of templates) {
+  const group = grouped.get(t.sector) || [];
+  group.push(t);
+  grouped.set(t.sector, group);
+}
+
+const sectorOptions = [
+  { value: 'all', label: 'All Sectors' },
+  { value: 'cyber_tech', label: 'Cyber / Tech' },
+  { value: 'defence', label: 'Defence' },
+  { value: 'insurance', label: 'Insurance' },
+];
+
+const filterDefaults: Record<string, string> = { sector: 'all' };
+const filterParams: Record<string, string> = { sector: sectorFilter };
+
+function filterUrl(overrides: Record<string, string>): string {
+  return buildFilterUrl('/admin/leads/outreach/templates', filterParams, filterDefaults, overrides);
+}
+
+function touchBadgeClasses(touchNumber: number): string {
+  switch (touchNumber) {
+    case 1: return 'bg-secondary/20 text-secondary border-secondary/30';
+    case 2: return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+    case 3: return 'bg-grey-700/30 text-grey-400 border-grey-600';
+    default: return 'bg-grey-700/30 text-grey-400 border-grey-600';
+  }
+}
+---
+
+<AdminLayout title="Outreach Templates">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Leads', href: '/admin/leads/' },
+    { label: 'Outreach', href: '/admin/leads/outreach' },
+    { label: 'Templates' },
+  ]} />
+
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white font-heading">Outreach Templates</h1>
+        <p class="mt-1 text-sm text-warm-300">Sector-based multi-touch message templates for outreach sequences</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/admin/leads/outreach" class="text-sm text-secondary hover:text-white transition-colors">
+          &larr; Back to Outreach
+        </a>
+        <a href="/admin/leads/outreach/templates/new" class="px-4 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-secondary/80 transition-colors">
+          Add template
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="bg-grey-800 rounded-xl border border-grey-700 p-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex gap-1">
+        {sectorOptions.map((f) => (
+          <a
+            href={filterUrl({ sector: f.value })}
+            class:list={[
+              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+              sectorFilter === f.value
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+            ]}
+          >
+            {f.label}
+          </a>
+        ))}
+      </div>
+
+      <span class="ml-auto text-xs text-grey-500">
+        {templates.length} template{templates.length !== 1 ? 's' : ''}
+      </span>
+      {sectorFilter !== 'all' && (
+        <a href="/admin/leads/outreach/templates" class="text-xs text-secondary hover:text-white transition-colors">
+          Clear filter
+        </a>
+      )}
+    </div>
+  </div>
+
+  <!-- Template list -->
+  {templates.length === 0 ? (
+    <EmptyState
+      heading="No outreach templates found"
+      message="Create your first template to start building outreach sequences."
+      iconPath="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+    />
+  ) : (
+    <div class="space-y-8">
+      {[...grouped.entries()].map(([sector, sectorTemplates]) => (
+        <div>
+          <h2 class="text-lg font-semibold text-white mb-4 font-heading">{sectorTemplates[0].sector_label}</h2>
+          <div class="bg-grey-800 rounded-xl border border-grey-700 overflow-hidden">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-grey-700">
+                  <th class="px-4 py-3 text-left text-xs font-medium text-warm-300 uppercase tracking-wider">Touch</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-warm-300 uppercase tracking-wider">Label</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-warm-300 uppercase tracking-wider hidden md:table-cell">Preview</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-warm-300 uppercase tracking-wider">Active</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-warm-300 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-grey-700/50">
+                {sectorTemplates.map((t) => (
+                  <tr class="template-row hover:bg-grey-700/30 transition-colors" data-template-id={t.id}>
+                    <td class="px-4 py-3">
+                      <span class:list={[
+                        'inline-block px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                        touchBadgeClasses(t.touch_number),
+                      ]}>
+                        Touch {t.touch_number}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-white font-medium">{t.touch_label}</td>
+                    <td class="px-4 py-3 text-sm text-grey-400 hidden md:table-cell">
+                      <span class="line-clamp-1">{t.body.slice(0, 80)}{t.body.length > 80 ? '...' : ''}</span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <button
+                        class="toggle-active-btn"
+                        data-template-id={t.id}
+                        data-active={String(t.is_active)}
+                        aria-label={t.is_active ? 'Deactivate template' : 'Activate template'}
+                      >
+                        <span class:list={[
+                          'inline-block w-8 h-5 rounded-full relative transition-colors',
+                          t.is_active ? 'bg-secondary' : 'bg-grey-600',
+                        ]}>
+                          <span class:list={[
+                            'absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                            t.is_active ? 'left-3.5' : 'left-0.5',
+                          ]}></span>
+                        </span>
+                      </button>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <a
+                          href={`/admin/leads/outreach/templates/${t.id}`}
+                          class="px-2.5 py-1 text-xs font-medium text-warm-300 bg-grey-700 rounded-lg border border-grey-600 hover:bg-grey-600 hover:text-white transition-colors"
+                        >
+                          Edit
+                        </a>
+                        <button
+                          class="delete-template-btn px-2.5 py-1 text-xs font-medium text-red-400 bg-grey-700 rounded-lg border border-grey-600 hover:bg-red-900/30 hover:border-red-500/30 transition-colors"
+                          data-template-id={t.id}
+                          data-template-label={`${t.sector_label} - Touch ${t.touch_number}`}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</AdminLayout>
+
+<script>
+  // Active toggle
+  document.querySelectorAll<HTMLButtonElement>('.toggle-active-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const templateId = btn.dataset.templateId;
+      const currentlyActive = btn.dataset.active === 'true';
+      const newActive = !currentlyActive;
+
+      try {
+        const res = await fetch(`/admin/api/templates/${templateId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: newActive }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        // Update UI
+        btn.dataset.active = String(newActive);
+        const track = btn.querySelector('span');
+        const thumb = track?.querySelector('span');
+        if (track && thumb) {
+          if (newActive) {
+            track.classList.remove('bg-grey-600');
+            track.classList.add('bg-secondary');
+            thumb.classList.remove('left-0.5');
+            thumb.classList.add('left-3.5');
+          } else {
+            track.classList.remove('bg-secondary');
+            track.classList.add('bg-grey-600');
+            thumb.classList.remove('left-3.5');
+            thumb.classList.add('left-0.5');
+          }
+        }
+      } catch (err) {
+        console.error('Toggle active failed:', err);
+        alert(`Failed to update template: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    });
+  });
+
+  // Delete buttons
+  document.querySelectorAll<HTMLButtonElement>('.delete-template-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const templateId = btn.dataset.templateId;
+      const label = btn.dataset.templateLabel || 'this template';
+
+      if (!confirm(`Delete "${label}"? This cannot be undone.`)) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      try {
+        const res = await fetch(`/admin/api/templates/${templateId}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        // Remove the row
+        const row = btn.closest('.template-row');
+        if (row) {
+          row.classList.add('opacity-50');
+          setTimeout(() => row.remove(), 300);
+        }
+      } catch (err) {
+        console.error('Delete template failed:', err);
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+        alert(`Failed to delete template: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    });
+  });
+</script>

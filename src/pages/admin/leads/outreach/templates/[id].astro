@@ -1,0 +1,347 @@
+---
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../../../components/admin/Breadcrumb.astro';
+import { getOutreachTemplate } from '../../../../../lib/admin/outreach-templates';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/admin/leads/outreach/templates');
+}
+
+const template = await getOutreachTemplate(id);
+
+if (!template) {
+  return Astro.redirect('/admin/leads/outreach/templates');
+}
+
+const sectorOptions = [
+  { value: 'cyber_tech', label: 'Cyber / Tech' },
+  { value: 'defence', label: 'Defence' },
+  { value: 'insurance', label: 'Insurance' },
+];
+
+const touchOptions = [
+  { value: 1, label: '1' },
+  { value: 2, label: '2' },
+  { value: 3, label: '3' },
+];
+---
+
+<AdminLayout title="Edit Template">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Leads', href: '/admin/leads/' },
+    { label: 'Outreach', href: '/admin/leads/outreach' },
+    { label: 'Templates', href: '/admin/leads/outreach/templates' },
+    { label: 'Edit' },
+  ]} />
+
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white font-heading">Edit Template</h1>
+        <p class="mt-1 text-sm text-warm-300">{template.sector_label} / Touch {template.touch_number}: {template.touch_label}</p>
+      </div>
+      <a href="/admin/leads/outreach/templates" class="text-sm text-secondary hover:text-white transition-colors">
+        &larr; Back to Templates
+      </a>
+    </div>
+  </div>
+
+  <form id="template-form" class="space-y-6 max-w-3xl">
+    <!-- Sector -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="sector" class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Sector</label>
+        <select
+          id="sector"
+          name="sector"
+          class="w-full px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 text-white text-sm focus:border-secondary focus:outline-none"
+        >
+          {sectorOptions.map((opt) => (
+            <option value={opt.value} selected={template.sector === opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label for="sector_label" class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Sector Label</label>
+        <input
+          type="text"
+          id="sector_label"
+          name="sector_label"
+          value={template.sector_label}
+          class="w-full px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 text-white text-sm focus:border-secondary focus:outline-none"
+          placeholder="e.g. Cyber / Tech"
+        />
+      </div>
+    </div>
+
+    <!-- Touch -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="touch_number" class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Touch Number</label>
+        <select
+          id="touch_number"
+          name="touch_number"
+          class="w-full px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 text-white text-sm focus:border-secondary focus:outline-none"
+        >
+          {touchOptions.map((opt) => (
+            <option value={opt.value} selected={template.touch_number === opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label for="touch_label" class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Touch Label</label>
+        <input
+          type="text"
+          id="touch_label"
+          name="touch_label"
+          value={template.touch_label}
+          class="w-full px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 text-white text-sm focus:border-secondary focus:outline-none"
+          placeholder="e.g. Observation, Insight, Respectful close"
+        />
+      </div>
+    </div>
+
+    <!-- Subject -->
+    <div>
+      <label for="subject" class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Subject <span class="text-grey-500 normal-case">(optional, not used for LinkedIn messages)</span></label>
+      <input
+        type="text"
+        id="subject"
+        name="subject"
+        value={template.subject || ''}
+        class="w-full px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 text-white text-sm focus:border-secondary focus:outline-none"
+        placeholder="Email subject line"
+      />
+    </div>
+
+    <!-- Body -->
+    <div>
+      <label for="body" class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Body</label>
+      <textarea
+        id="body"
+        name="body"
+        rows="16"
+        class="w-full px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 text-white text-sm font-mono leading-relaxed focus:border-secondary focus:outline-none resize-y"
+        placeholder="Template body text with {{hook_name}} placeholders"
+      >{template.body}</textarea>
+    </div>
+
+    <!-- Detected hooks -->
+    <div>
+      <label class="block text-xs font-medium text-warm-300 uppercase tracking-wider mb-2">Detected personalisation hooks</label>
+      <div id="hooks-display" class="flex flex-wrap gap-2 min-h-[2rem] p-3 bg-grey-900/50 rounded-lg border border-grey-700/50">
+        {template.personalisation_hooks.map((hook) => (
+          <span class="inline-block px-2 py-0.5 rounded-full text-xs font-mono bg-secondary/20 text-secondary border border-secondary/30">
+            {`{{${hook}}}`}
+          </span>
+        ))}
+      </div>
+      <p class="mt-1 text-xs text-grey-500">Hooks are auto-detected from {"{{...}}"} patterns in the body text.</p>
+    </div>
+
+    <!-- Active toggle -->
+    <div class="flex items-center gap-3">
+      <label for="is_active" class="text-xs font-medium text-warm-300 uppercase tracking-wider">Active</label>
+      <button
+        type="button"
+        id="is_active_toggle"
+        data-active={String(template.is_active)}
+        class="relative"
+        aria-label="Toggle active status"
+      >
+        <span class:list={[
+          'inline-block w-10 h-6 rounded-full transition-colors',
+          template.is_active ? 'bg-secondary' : 'bg-grey-600',
+        ]}>
+          <span class:list={[
+            'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+            template.is_active ? 'left-5' : 'left-1',
+          ]}></span>
+        </span>
+      </button>
+      <span id="is_active_label" class="text-sm text-grey-400">{template.is_active ? 'Active' : 'Inactive'}</span>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3 pt-4 border-t border-grey-700">
+      <button
+        type="submit"
+        id="save-btn"
+        class="px-6 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
+      >
+        Save changes
+      </button>
+      <a
+        href="/admin/leads/outreach/templates"
+        class="px-6 py-2 text-sm font-medium text-warm-300 bg-grey-700 rounded-lg border border-grey-600 hover:bg-grey-600 hover:text-white transition-colors"
+      >
+        Cancel
+      </a>
+      <button
+        type="button"
+        id="delete-btn"
+        class="ml-auto px-4 py-2 text-sm font-medium text-red-400 bg-grey-700 rounded-lg border border-grey-600 hover:bg-red-900/30 hover:border-red-500/30 transition-colors"
+      >
+        Delete template
+      </button>
+    </div>
+  </form>
+
+  <!-- Status message -->
+  <div id="status-msg" class="hidden mt-4 max-w-3xl px-4 py-2 rounded-lg text-sm"></div>
+</AdminLayout>
+
+<script define:vars={{ templateId: template.id }}>
+  // Extract hooks from body text
+  function extractHooks(text) {
+    const matches = text.match(/\{\{(\w+)\}\}/g);
+    if (!matches) return [];
+    const unique = [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '')))];
+    return unique;
+  }
+
+  // Update hooks display
+  function updateHooksDisplay() {
+    const body = document.getElementById('body');
+    const display = document.getElementById('hooks-display');
+    if (!body || !display) return;
+
+    const hooks = extractHooks(body.value);
+    display.innerHTML = hooks.length === 0
+      ? '<span class="text-xs text-grey-500">No hooks detected</span>'
+      : hooks.map(h => `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-mono bg-secondary/20 text-secondary border border-secondary/30">{{${h}}}</span>`).join('');
+  }
+
+  // Body textarea hook detection
+  const bodyEl = document.getElementById('body');
+  if (bodyEl) {
+    bodyEl.addEventListener('input', updateHooksDisplay);
+  }
+
+  // Active toggle
+  const toggleBtn = document.getElementById('is_active_toggle');
+  const toggleLabel = document.getElementById('is_active_label');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const current = toggleBtn.dataset.active === 'true';
+      const next = !current;
+      toggleBtn.dataset.active = String(next);
+
+      const track = toggleBtn.querySelector('span');
+      const thumb = track?.querySelector('span');
+      if (track && thumb) {
+        if (next) {
+          track.classList.remove('bg-grey-600');
+          track.classList.add('bg-secondary');
+          thumb.classList.remove('left-1');
+          thumb.classList.add('left-5');
+        } else {
+          track.classList.remove('bg-secondary');
+          track.classList.add('bg-grey-600');
+          thumb.classList.remove('left-5');
+          thumb.classList.add('left-1');
+        }
+      }
+      if (toggleLabel) {
+        toggleLabel.textContent = next ? 'Active' : 'Inactive';
+      }
+    });
+  }
+
+  // Show status message
+  function showStatus(message, isError) {
+    const el = document.getElementById('status-msg');
+    if (!el) return;
+    el.textContent = message;
+    el.className = isError
+      ? 'mt-4 max-w-3xl px-4 py-2 rounded-lg text-sm bg-red-900/30 text-red-400 border border-red-500/30'
+      : 'mt-4 max-w-3xl px-4 py-2 rounded-lg text-sm bg-secondary/10 text-secondary border border-secondary/30';
+  }
+
+  // Form submission
+  const form = document.getElementById('template-form');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const saveBtn = document.getElementById('save-btn');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+      }
+
+      const bodyText = document.getElementById('body')?.value || '';
+      const hooks = extractHooks(bodyText);
+
+      const payload = {
+        sector: document.getElementById('sector')?.value,
+        sector_label: document.getElementById('sector_label')?.value,
+        touch_number: parseInt(document.getElementById('touch_number')?.value || '1', 10),
+        touch_label: document.getElementById('touch_label')?.value,
+        subject: document.getElementById('subject')?.value || null,
+        body: bodyText,
+        personalisation_hooks: hooks,
+        is_active: toggleBtn?.dataset.active === 'true',
+      };
+
+      try {
+        const res = await fetch(`/admin/api/templates/${templateId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        showStatus('Template saved successfully.', false);
+      } catch (err) {
+        console.error('Save failed:', err);
+        showStatus(`Failed to save: ${err instanceof Error ? err.message : 'Unknown error'}`, true);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save changes';
+        }
+      }
+    });
+  }
+
+  // Delete button
+  const deleteBtn = document.getElementById('delete-btn');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm('Delete this template? This cannot be undone.')) return;
+
+      deleteBtn.disabled = true;
+      deleteBtn.textContent = 'Deleting...';
+
+      try {
+        const res = await fetch(`/admin/api/templates/${templateId}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        window.location.href = '/admin/leads/outreach/templates';
+      } catch (err) {
+        console.error('Delete failed:', err);
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = 'Delete template';
+        showStatus(`Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`, true);
+      }
+    });
+  }
+</script>
