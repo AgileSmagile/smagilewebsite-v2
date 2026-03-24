@@ -39,22 +39,29 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     if (!isLocal) {
       const cfEmail = context.request.headers.get('Cf-Access-Authenticated-User-Email');
+      const cfServiceToken = context.request.headers.get('Cf-Access-Client-Id');
+      const isApiRoute = pathname.startsWith('/admin/api/');
 
-      if (!cfEmail) {
+      // Service tokens (validated by CF Access) are allowed on API routes only
+      const isServiceAuth = isApiRoute && cfServiceToken;
+
+      if (!cfEmail && !isServiceAuth) {
         return new Response('Unauthorised', { status: 403 });
       }
 
-      // Verify email against allowlist
-      const adminEmails = (
-        process.env.ADMIN_EMAILS ||
-        process.env.OWNER_EMAIL ||
-        ''
-      )
-        .split(',')
-        .map((e) => e.trim().toLowerCase());
+      // For email-based auth, verify against allowlist
+      if (cfEmail && !isServiceAuth) {
+        const adminEmails = (
+          process.env.ADMIN_EMAILS ||
+          process.env.OWNER_EMAIL ||
+          ''
+        )
+          .split(',')
+          .map((e) => e.trim().toLowerCase());
 
-      if (!adminEmails.includes(cfEmail.toLowerCase())) {
-        return new Response('Forbidden', { status: 403 });
+        if (!adminEmails.includes(cfEmail.toLowerCase())) {
+          return new Response('Forbidden', { status: 403 });
+        }
       }
     }
 
