@@ -1,24 +1,13 @@
 import type { APIContext } from 'astro';
 import { getInsights, addInsight, deleteInsight } from '../../../lib/admin/scout';
+import { jsonOk, jsonError } from '../../../lib/admin/api-response';
 
 export const prerender = false;
-
-const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: JSON_HEADERS,
-  });
-}
 
 export async function GET() {
   try {
     const insights = getInsights();
-    return new Response(JSON.stringify(insights), {
-      status: 200,
-      headers: JSON_HEADERS,
-    });
+    return jsonOk(insights);
   } catch (err) {
     console.error('[scout] GET failed:', err);
     return jsonError('Failed to read insights', 500);
@@ -30,12 +19,12 @@ export async function POST({ request }: APIContext) {
   try {
     body = await request.json();
   } catch {
-    return jsonError('Invalid JSON body', 400);
+    return jsonError('Invalid JSON body');
   }
 
   const companyName = typeof body.companyName === 'string' ? body.companyName.trim() : '';
   if (!companyName) {
-    return jsonError('Company name is required', 400);
+    return jsonError('Company name is required');
   }
 
   const sourceUrl = typeof body.sourceUrl === 'string' ? body.sourceUrl.trim() : '';
@@ -51,10 +40,7 @@ export async function POST({ request }: APIContext) {
       notes: typeof body.notes === 'string' ? body.notes.trim() : '',
     });
 
-    return new Response(JSON.stringify(insight), {
-      status: 201,
-      headers: JSON_HEADERS,
-    });
+    return jsonOk(insight, 201);
   } catch (err) {
     console.error('[scout] POST failed:', err);
     return jsonError('Failed to save insight. Check server logs for details.', 500);
@@ -66,12 +52,12 @@ export async function DELETE({ request }: APIContext) {
   try {
     body = await request.json();
   } catch {
-    return jsonError('Invalid JSON body', 400);
+    return jsonError('Invalid JSON body');
   }
 
   const id = typeof body.id === 'string' ? body.id : '';
   if (!id) {
-    return jsonError('Insight ID is required', 400);
+    return jsonError('Insight ID is required');
   }
 
   try {
@@ -80,10 +66,7 @@ export async function DELETE({ request }: APIContext) {
       return jsonError('Insight not found', 404);
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: JSON_HEADERS,
-    });
+    return jsonOk({ success: true });
   } catch (err) {
     console.error('[scout] DELETE failed:', err);
     return jsonError('Failed to delete insight. Check server logs for details.', 500);

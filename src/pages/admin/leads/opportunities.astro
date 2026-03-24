@@ -3,6 +3,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import OpportunityStatusScript from '../../../components/admin/OpportunityStatusScript.astro';
+import OpportunityRemoveScript from '../../../components/admin/OpportunityRemoveScript.astro';
 import { getOpportunities, type OpportunitySummary } from '../../../lib/admin/opportunities';
 import { formatRate, formatDate, scoreColour, scoreBg } from '../../../lib/admin/format';
 import { buildFilterUrl } from '../../../lib/admin/filter-url';
@@ -335,65 +336,4 @@ const sortOptions = [
 </AdminLayout>
 
 <OpportunityStatusScript />
-
-<script>
-  function initRemoveButtons() {
-    document.querySelectorAll<HTMLButtonElement>('.opp-remove-btn').forEach((btn) => {
-      if (btn.dataset.bound === '1') return;
-      btn.dataset.bound = '1';
-
-      btn.addEventListener('click', async () => {
-        const oppId = btn.dataset.oppId;
-        if (!oppId) return;
-        if (btn.disabled) return;
-
-        const row = btn.closest('tr');
-        if (!row) return;
-
-        btn.disabled = true;
-        row.style.transition = 'opacity 0.3s, max-height 0.3s';
-        row.style.opacity = '0';
-
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 15000);
-
-          const res = await fetch(`/admin/api/opportunities/${oppId}/status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'removed' }),
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeout);
-
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
-
-          setTimeout(() => row.remove(), 300);
-        } catch (err) {
-          row.style.opacity = '1';
-          btn.disabled = false;
-          console.error('Remove failed:', err);
-
-          const cell = btn.closest('td');
-          if (cell) {
-            const toast = document.createElement('div');
-            toast.className = 'absolute mt-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30 whitespace-nowrap z-10';
-            toast.textContent = 'Failed to remove';
-            cell.style.position = 'relative';
-            cell.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-          }
-        }
-      });
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initRemoveButtons);
-  } else {
-    initRemoveButtons();
-  }
-</script>
+<OpportunityRemoveScript />

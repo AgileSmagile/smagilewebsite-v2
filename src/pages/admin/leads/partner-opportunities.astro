@@ -24,6 +24,11 @@ interface MatchedOpportunity extends JobOpportunity {
   bestScore: number;
 }
 
+interface PartnerFilteredOpportunity extends MatchedOpportunity {
+  selectedPartnerScore: number;
+  selectedPartnerReasons: string[];
+}
+
 // Score every opportunity against every partner
 const matchedOpportunities: MatchedOpportunity[] = opportunities.map((opp) => {
   const partnerMatches = partners
@@ -42,17 +47,29 @@ const matchedOpportunities: MatchedOpportunity[] = opportunities.map((opp) => {
 });
 
 // Filter by selected partner if applicable
-const filteredOpportunities = selectedPartnerId === 'all'
+const filteredOpportunities: (MatchedOpportunity | PartnerFilteredOpportunity)[] = selectedPartnerId === 'all'
   ? matchedOpportunities
     .filter((opp) => opp.partnerMatches.length > 0)
     .sort((a, b) => b.bestScore - a.bestScore)
   : matchedOpportunities
-    .map((opp) => {
+    .map((opp): PartnerFilteredOpportunity => {
       const pm = opp.partnerMatches.find((pm) => pm.partner.id === selectedPartnerId);
       return { ...opp, selectedPartnerScore: pm?.match.score ?? 0, selectedPartnerReasons: pm?.match.reasons ?? [] };
     })
     .filter((opp) => opp.selectedPartnerScore > 0)
     .sort((a, b) => b.selectedPartnerScore - a.selectedPartnerScore);
+
+function isPartnerFiltered(opp: MatchedOpportunity | PartnerFilteredOpportunity): opp is PartnerFilteredOpportunity {
+  return 'selectedPartnerScore' in opp;
+}
+
+function getPartnerScore(opp: MatchedOpportunity | PartnerFilteredOpportunity): number {
+  return isPartnerFiltered(opp) ? opp.selectedPartnerScore : opp.bestScore;
+}
+
+function getPartnerReasons(opp: MatchedOpportunity | PartnerFilteredOpportunity): string[] {
+  return isPartnerFiltered(opp) ? opp.selectedPartnerReasons : (opp.partnerMatches[0]?.match.reasons || []);
+}
 
 // KPIs
 const activePartnerCount = partners.length;
@@ -191,12 +208,8 @@ const selectedPartner = selectedPartnerId !== 'all'
               </thead>
               <tbody>
                 {filteredOpportunities.map((opp) => {
-                  const displayScore = selectedPartnerId === 'all'
-                    ? opp.bestScore
-                    : ('selectedPartnerScore' in opp ? (opp as any).selectedPartnerScore : 0);
-                  const displayReasons = selectedPartnerId === 'all'
-                    ? (opp.partnerMatches[0]?.match.reasons || [])
-                    : ('selectedPartnerReasons' in opp ? (opp as any).selectedPartnerReasons : []);
+                  const displayScore = getPartnerScore(opp);
+                  const displayReasons = getPartnerReasons(opp);
                   return (
                     <tr class="border-b border-grey-700/50 last:border-0 group">
                       <td class="py-3">
@@ -256,23 +269,15 @@ const selectedPartner = selectedPartnerId !== 'all'
       )}
 
       <!-- High matches detail section -->
-      {filteredOpportunities.filter((o) => {
-        const s = selectedPartnerId === 'all' ? o.bestScore : ('selectedPartnerScore' in o ? (o as any).selectedPartnerScore : 0);
-        return s >= 60;
-      }).length > 0 && (
+      {filteredOpportunities.filter((o) => getPartnerScore(o) >= 60).length > 0 && (
         <div class="mt-6 bg-grey-800 rounded-xl border border-grey-700 p-6">
           <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Top Matches</h2>
           <div class="space-y-3">
             {filteredOpportunities
-              .filter((o) => {
-                const s = selectedPartnerId === 'all' ? o.bestScore : ('selectedPartnerScore' in o ? (o as any).selectedPartnerScore : 0);
-                return s >= 60;
-              })
+              .filter((o) => getPartnerScore(o) >= 60)
               .map((opp) => {
-                const displayScore = selectedPartnerId === 'all' ? opp.bestScore : (opp as any).selectedPartnerScore;
-                const displayReasons = selectedPartnerId === 'all'
-                  ? (opp.partnerMatches[0]?.match.reasons || [])
-                  : ((opp as any).selectedPartnerReasons || []);
+                const displayScore = getPartnerScore(opp);
+                const displayReasons = getPartnerReasons(opp);
                 return (
                   <div class="p-3 bg-grey-900/50 rounded-lg border border-grey-700/50">
                     <div class="flex items-center justify-between mb-1">

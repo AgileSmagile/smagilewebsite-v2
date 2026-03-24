@@ -19,6 +19,33 @@ export function formatDateWithYear(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/** Format a currency value in GBP (e.g. "£1,234"). */
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+/** Return a text colour class for an invoice status. */
+export function invoiceStatusColour(status: string): string {
+  switch (status) {
+    case 'Paid':
+      return 'text-green-400';
+    case 'Overdue':
+      return 'text-red-400';
+    case 'Open':
+    case 'Sent':
+      return 'text-yellow-400';
+    case 'Draft':
+      return 'text-grey-500';
+    default:
+      return 'text-warm-300';
+  }
+}
+
 /** Return a text colour class based on match score. */
 export function scoreColour(score: number | null): string {
   if (!score) return 'text-grey-500';
