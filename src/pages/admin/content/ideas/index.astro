@@ -1,0 +1,285 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Breadcrumb from '../../../../components/admin/Breadcrumb.astro';
+import EmptyState from '../../../../components/admin/EmptyState.astro';
+import { getContentIdeas } from '../../../../lib/admin/content-ideas';
+import type { ContentCategory } from '../../../../lib/admin/content-ideas';
+
+export const prerender = false;
+
+const categoryFilter = (Astro.url.searchParams.get('category') || 'all') as ContentCategory | 'all';
+const ideas = await getContentIdeas({ category: categoryFilter });
+
+const categoryOptions = [
+  { value: 'all', label: 'All' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'learning_catalogue', label: 'Learning Catalogue' },
+];
+
+const categoryLabels: Record<string, string> = {
+  social_media: 'Social Media',
+  learning_catalogue: 'Learning Catalogue',
+};
+
+const statusBadge: Record<string, string> = {
+  idea: 'bg-blue-500/20 text-blue-400',
+  drafted: 'bg-amber-500/20 text-amber-400',
+  published: 'bg-green-500/20 text-green-400',
+  archived: 'bg-grey-700/30 text-grey-400',
+};
+
+function filterUrl(category: string): string {
+  if (category === 'all') return '/admin/content/ideas';
+  return `/admin/content/ideas?category=${category}`;
+}
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+---
+
+<AdminLayout title="Content Ideas">
+  <Breadcrumb segments={[
+    { label: 'Dashboard', href: '/admin/' },
+    { label: 'Content', href: '/admin/content/' },
+    { label: 'Ideas' },
+  ]} />
+
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white font-heading">Content Ideas</h1>
+        <p class="mt-1 text-sm text-warm-300">Capture ideas quickly. Develop them later.</p>
+      </div>
+      <a href="/admin/content/" class="text-sm text-secondary hover:text-white transition-colors">
+        &larr; Content Pipeline
+      </a>
+    </div>
+  </div>
+
+  <!-- Quick capture -->
+  <div class="bg-grey-800 rounded-xl border border-grey-700 p-6 mb-6">
+    <form id="capture-form">
+      <label for="raw_input" class="block text-sm font-medium text-white mb-3">What do you want to capture?</label>
+      <textarea
+        id="raw_input"
+        name="raw_input"
+        rows="3"
+        class="w-full px-3 py-2 bg-grey-900 rounded-lg border border-grey-700 text-white text-sm placeholder-grey-500 focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary resize-y"
+        placeholder="A title, a theme, a takeaway, a message, something related to..."
+        required
+      ></textarea>
+
+      <div class="flex items-center justify-between mt-3">
+        <div class="flex items-center gap-4">
+          <span class="text-xs text-warm-300 uppercase tracking-wider">Category</span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="category" value="social_media" checked class="accent-secondary" />
+            <span class="text-sm text-white">Social Media</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="category" value="learning_catalogue" class="accent-secondary" />
+            <span class="text-sm text-white">Learning Catalogue</span>
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          id="capture-btn"
+          class="px-5 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
+        >
+          Capture
+        </button>
+      </div>
+    </form>
+
+    <div id="capture-status" class="hidden mt-3 px-4 py-2 rounded-lg text-sm"></div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="flex items-center gap-1 mb-4">
+    {categoryOptions.map((opt) => (
+      <a
+        href={filterUrl(opt.value)}
+        class:list={[
+          'px-3 py-1.5 text-xs rounded-lg border transition-colors',
+          categoryFilter === opt.value
+            ? 'bg-secondary/20 border-secondary text-secondary'
+            : 'bg-grey-900 border-grey-700 text-warm-300 hover:border-grey-600',
+        ]}
+      >
+        {opt.label}
+      </a>
+    ))}
+    <span class="ml-auto text-xs text-grey-500">
+      {ideas.length} idea{ideas.length !== 1 ? 's' : ''}
+    </span>
+  </div>
+
+  <!-- Ideas list -->
+  {ideas.length === 0 ? (
+    <EmptyState
+      heading="No content ideas yet"
+      message="Use the capture form above to save your first idea."
+      iconPath="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
+    />
+  ) : (
+    <div class="space-y-2" id="ideas-list">
+      {ideas.map((idea) => (
+        <div
+          class="idea-row bg-grey-800 rounded-xl border border-grey-700 p-4 hover:border-grey-600 transition-colors group"
+          data-idea-id={idea.id}
+        >
+          <div class="flex items-start gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-white leading-relaxed">{idea.raw_input}</p>
+              {idea.title && (
+                <p class="mt-1 text-xs text-secondary font-medium">{idea.title}</p>
+              )}
+              <div class="flex items-center gap-2 mt-2">
+                <span class:list={[
+                  'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                  idea.category === 'social_media'
+                    ? 'bg-purple-500/20 text-purple-400'
+                    : 'bg-teal-500/20 text-teal-400',
+                ]}>
+                  {categoryLabels[idea.category]}
+                </span>
+                <span class:list={[
+                  'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                  statusBadge[idea.status],
+                ]}>
+                  {idea.status}
+                </span>
+                {idea.content && (
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-500">
+                    has content
+                  </span>
+                )}
+                <span class="text-xs text-grey-500">{timeAgo(idea.created_at)}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a
+                href={`/admin/content/ideas/${idea.id}`}
+                class="px-2.5 py-1 text-xs font-medium text-warm-300 bg-grey-700 rounded-lg border border-grey-600 hover:bg-grey-600 hover:text-white transition-colors"
+              >
+                Edit
+              </a>
+              <button
+                class="delete-idea-btn px-2.5 py-1 text-xs font-medium text-red-400 bg-grey-700 rounded-lg border border-grey-600 hover:bg-red-900/30 hover:border-red-500/30 transition-colors"
+                data-idea-id={idea.id}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</AdminLayout>
+
+<script>
+  // Quick capture form
+  const form = document.getElementById('capture-form') as HTMLFormElement | null;
+  const captureBtn = document.getElementById('capture-btn');
+  const statusEl = document.getElementById('capture-status');
+
+  function showCaptureStatus(message: string, isError: boolean) {
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    statusEl.className = isError
+      ? 'mt-3 px-4 py-2 rounded-lg text-sm bg-red-900/30 text-red-400 border border-red-500/30'
+      : 'mt-3 px-4 py-2 rounded-lg text-sm bg-secondary/10 text-secondary border border-secondary/30';
+  }
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const rawInput = (document.getElementById('raw_input') as HTMLTextAreaElement)?.value?.trim();
+      const category = (form.querySelector('input[name="category"]:checked') as HTMLInputElement)?.value;
+
+      if (!rawInput) return;
+
+      if (captureBtn) {
+        (captureBtn as HTMLButtonElement).disabled = true;
+        captureBtn.textContent = 'Saving...';
+      }
+
+      try {
+        const res = await fetch('/admin/api/content-ideas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category, raw_input: rawInput }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        // Clear form and reload to show new idea
+        (document.getElementById('raw_input') as HTMLTextAreaElement).value = '';
+        showCaptureStatus('Captured!', false);
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        console.error('Capture failed:', err);
+        showCaptureStatus(
+          `Failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          true,
+        );
+      } finally {
+        if (captureBtn) {
+          (captureBtn as HTMLButtonElement).disabled = false;
+          captureBtn.textContent = 'Capture';
+        }
+      }
+    });
+  }
+
+  // Delete buttons
+  document.querySelectorAll<HTMLButtonElement>('.delete-idea-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const ideaId = btn.dataset.ideaId;
+      if (!confirm('Delete this idea? This cannot be undone.')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      try {
+        const res = await fetch(`/admin/api/content-ideas/${ideaId}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        const row = btn.closest('.idea-row');
+        if (row) {
+          row.classList.add('opacity-50');
+          setTimeout(() => row.remove(), 300);
+        }
+      } catch (err) {
+        console.error('Delete failed:', err);
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+        alert(`Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    });
+  });
+</script>

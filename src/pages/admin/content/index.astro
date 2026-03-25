@@ -3,11 +3,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Breadcrumb from '../../../components/admin/Breadcrumb.astro';
 import StatCard from '../../../components/admin/StatCard.astro';
 import { getCollection } from 'astro:content';
+import { getContentIdeas } from '../../../lib/admin/content-ideas';
 
 export const prerender = false;
 
 // Load real blog content
 const allPosts = await getCollection('blog');
+
+// Load content ideas
+const allIdeas = await getContentIdeas();
+const ideaCount = allIdeas.filter((i) => i.status === 'idea').length;
+const draftedCount = allIdeas.filter((i) => i.status === 'drafted').length;
 const publishedPosts = allPosts.filter((p) => !p.data.draft);
 const draftPosts = allPosts.filter((p) => p.data.draft);
 
@@ -48,7 +54,10 @@ const blogTarget = 2;
   </div>
 
   <!-- KPI row -->
-  <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
+  <div class="grid gap-4 grid-cols-2 lg:grid-cols-5 mb-8">
+    <a href="/admin/content/ideas/" class="contents">
+      <StatCard label="Ideas" value={ideaCount} subtitle={`${draftedCount} drafted`} />
+    </a>
     <StatCard label="In Progress" value={draftPosts.length} subtitle="Draft blog posts" />
     <StatCard label="Scheduled" value={0} subtitle="No scheduling system yet" />
     <StatCard label="Published This Month" value={publishedThisMonth.length} subtitle={monthLabel} />
@@ -60,6 +69,59 @@ const blogTarget = 2;
     <h2 class="text-sm font-medium text-warm-300 uppercase tracking-wider mb-4">Content by Channel</h2>
 
     <div class="grid gap-4">
+      <!-- Content Ideas -->
+      <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-white">Content Ideas</h3>
+          <a href="/admin/content/ideas/" class="text-xs text-secondary hover:text-white transition-colors">
+            View all &rarr;
+          </a>
+        </div>
+
+        {allIdeas.length === 0 ? (
+          <div class="text-center py-6">
+            <p class="text-sm text-grey-500">No content ideas captured yet.</p>
+            <a href="/admin/content/ideas/" class="mt-2 inline-block text-xs text-secondary hover:text-white transition-colors">
+              Capture your first idea
+            </a>
+          </div>
+        ) : (
+          <div class="divide-y divide-grey-700">
+            {allIdeas.slice(0, 5).map((idea) => (
+              <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                <div class="flex items-center gap-3 min-w-0">
+                  <a
+                    href={`/admin/content/ideas/${idea.id}`}
+                    class="text-sm text-white hover:text-secondary transition-colors truncate"
+                  >
+                    {idea.raw_input.length > 80 ? idea.raw_input.slice(0, 80) + '...' : idea.raw_input}
+                  </a>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-4">
+                  <span class:list={[
+                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                    idea.category === 'social_media'
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'bg-teal-500/20 text-teal-400',
+                  ]}>
+                    {idea.category === 'social_media' ? 'Social' : 'Learning'}
+                  </span>
+                  <span class:list={[
+                    'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                    idea.status === 'idea' ? 'bg-blue-500/20 text-blue-400'
+                      : idea.status === 'drafted' ? 'bg-amber-500/20 text-amber-400'
+                      : idea.status === 'published' ? 'bg-green-500/20 text-green-400'
+                      : 'bg-grey-700/30 text-grey-400',
+                  ]}>
+                    {idea.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <!-- Blog -->
       <div class="bg-grey-800 border border-grey-700 rounded-xl p-6">
         <div class="flex items-center justify-between mb-4">
