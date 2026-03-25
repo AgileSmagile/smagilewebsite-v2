@@ -106,10 +106,10 @@ function extractSparkline(items: CodeHealthSnapshot[], key: string): number[] {
   <div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-3">
     <StatCard
       label="Lines of Code"
-      value={formatNumber(latest.sloc ?? latest.lines_of_code)}
-      subtitle={latest.sloc ? 'Source lines (excl. blanks/comments)' : 'Total lines'}
-      trend={getTrend(latest.sloc ?? latest.lines_of_code, prev?.sloc ?? prev?.lines_of_code)}
-      sparkline={extractSparkline(history, latest.sloc ? 'sloc' : 'lines_of_code')}
+      value={formatNumber(latest.lines_of_code ?? latest.sloc)}
+      subtitle="Total lines (.ts/.tsx, excl. tests)"
+      trend={getTrend(latest.lines_of_code ?? latest.sloc, prev?.lines_of_code ?? prev?.sloc)}
+      sparkline={extractSparkline(history, 'lines_of_code')}
     />
     <StatCard
       label="Tests"

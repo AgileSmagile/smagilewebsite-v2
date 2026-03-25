@@ -524,7 +524,7 @@ function funnelPct(value: number, max: number): number {
               ['Puppeteer', 'PDF generation (@sparticuz/chromium)'],
               ['docx', 'Word export'],
               ['@anthropic-ai/sdk', 'Claude AI integration'],
-              ['Vercel', 'Hosting (free tier)'],
+              ['Docker', 'Self-hosted on Pi'],
             ].map(([tool, purpose]) => (
               <div class="flex items-center justify-between text-xs">
                 <span class="text-white font-mono">{tool}</span>
@@ -541,10 +541,12 @@ function funnelPct(value: number, max: number): number {
           <div class="px-4 pb-3 space-y-1">
             {[
               ['Supabase', 'Database, auth, storage'],
-              ['Vercel', 'Hosting, serverless'],
               ['Anthropic Claude', 'AI pipeline'],
               ['GoCardless', 'Payments'],
-              ['Cloudflare', 'DNS, CDN'],
+              ['Cloudflare', 'DNS, CDN, tunnel'],
+              ['n8n', 'Workflow automation'],
+              ['UptimeRobot', 'Uptime monitoring'],
+              ['Capsule CRM', 'Contact and lead management'],
             ].map(([service, role]) => (
               <div class="flex items-center justify-between text-xs">
                 <span class="text-white font-mono">{service}</span>
