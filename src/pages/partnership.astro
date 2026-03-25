@@ -278,11 +278,12 @@ const productPartners = [
 
     <script>
       (function () {
-        const track = document.getElementById('carousel-track');
+        const track = document.getElementById('carousel-track') as HTMLElement | null;
         const dots = document.querySelectorAll<HTMLButtonElement>('.carousel-dot');
         const prevBtn = document.getElementById('carousel-prev');
         const nextBtn = document.getElementById('carousel-next');
         if (!track || !prevBtn || !nextBtn) return;
+        const el = track; // capture for closure narrowing
 
         const slides = track.querySelectorAll<HTMLDivElement>('.carousel-slide');
         const total = slides.length;
@@ -293,7 +294,7 @@ const productPartners = [
 
         function goTo(index: number) {
           current = ((index % total) + total) % total;
-          track.style.transform = `translateX(-${current * 100}%)`;
+          el.style.transform = `translateX(-${current * 100}%)`;
           dots.forEach((dot, i) => {
             dot.classList.toggle('bg-primary', i === current);
             dot.classList.toggle('dark:bg-secondary', i === current);

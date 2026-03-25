@@ -33,6 +33,7 @@ export interface CodeHealthSnapshot {
   git_churn?: Array<{ path: string; changes: number }>;
   type_definitions?: Array<{ path: string; count: number }>;
   file_type_breakdown?: Array<{ extension: string; lines: number; files: number }>;
+  [key: string]: unknown;
 }
 
 export type Trend = 'up' | 'down' | 'flat';
@@ -620,8 +621,8 @@ export async function getSmagileWebsiteMetrics(): Promise<ProjectMetrics> {
  * For metrics where lower is better (e.g. lint errors, vulnerabilities),
  * the caller should invert the meaning in the UI.
  */
-export function getTrend(latest: number | null, previous: number | null): Trend {
-  if (latest === null || previous === null) return 'flat';
+export function getTrend(latest: number | null | undefined, previous: number | null | undefined): Trend {
+  if (latest == null || previous == null) return 'flat';
   if (latest > previous) return 'up';
   if (latest < previous) return 'down';
   return 'flat';

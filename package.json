@@ -12,17 +12,19 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@astrojs/node": "^9.5.4",
-    "@astrojs/rss": "^4.0.15",
-    "@astrojs/sitemap": "^3.7.0",
+    "@astrojs/node": "^10.0.0",
+    "@astrojs/rss": "^4.0.17",
+    "@astrojs/sitemap": "^3.7.1",
     "@supabase/supabase-js": "^2.99.2",
     "@tailwindcss/typography": "^0.5.19",
-    "@tailwindcss/vite": "^4.2.1",
-    "astro": "^5.17.1",
-    "tailwindcss": "^4.2.1"
+    "@tailwindcss/vite": "^4.2.2",
+    "astro": "^6.0.0",
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.8",
     "@vitest/coverage-v8": "^4.1.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },
   "overrides": {

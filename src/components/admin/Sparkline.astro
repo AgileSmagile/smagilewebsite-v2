@@ -59,8 +59,7 @@ if (valid) {
     height={height}
     viewBox={`0 0 ${width} ${height}`}
     class="inline-block shrink-0"
-    aria-hidden="true"
-    title={`${data.length} data point${data.length === 1 ? '' : 's'} — trend line appears with more data`}
+    aria-label={`${data.length} data point${data.length === 1 ? '' : 's'} - trend line appears with more data`}
   >
     <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#4a4a4a" stroke-width="1" stroke-dasharray="3 3" />
     <circle cx={width - padding} cy={height / 2} r="2" fill="#6b7280" />
