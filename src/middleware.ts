@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 
+/** Security headers and auth middleware for all routes */
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
