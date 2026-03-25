@@ -205,8 +205,19 @@ function extractSparkline(items: CodeHealthSnapshot[], key: string): number[] {
   </div>
 
   {/* Audit panels */}
-  {(latest.top_files || latest.lines_by_directory || latest.bloat_files || latest.todo_hotspots || latest.git_churn || latest.file_type_breakdown) && (
+  {(latest.loc_composition || latest.top_files || latest.lines_by_directory || latest.bloat_files || latest.todo_hotspots || latest.git_churn || latest.file_type_breakdown) && (
     <div class="grid gap-3 grid-cols-1 lg:grid-cols-2 mt-3">
+      {latest.loc_composition && latest.lines_of_code && (
+        <AuditPanel
+          title="LOC Composition"
+          countLabel="categories"
+          items={latest.loc_composition.map((c) => {
+            const pct = ((c.lines / latest.lines_of_code!) * 100).toFixed(1);
+            return { label: c.category, value: `${formatNumber(c.lines)} (${pct}%)` };
+          })}
+          initialCount={6}
+        />
+      )}
       {latest.top_files && (
         <AuditPanel
           title="Largest Files"

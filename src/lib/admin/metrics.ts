@@ -33,6 +33,7 @@ export interface CodeHealthSnapshot {
   git_churn?: Array<{ path: string; changes: number }>;
   type_definitions?: Array<{ path: string; count: number }>;
   file_type_breakdown?: Array<{ extension: string; lines: number; files: number }>;
+  loc_composition?: Array<{ category: string; lines: number; files: number }>;
 }
 
 export type Trend = 'up' | 'down' | 'flat';
@@ -136,6 +137,7 @@ function mergeRawData(
     'git_churn',
     'type_definitions',
     'file_type_breakdown',
+    'loc_composition',
   ] as const;
 
   for (const field of auditFields) {
