@@ -298,6 +298,18 @@ const insights = getInsights();
 
     if (!companyName) {
       showStatus('Company name is required.', true);
+      (document.getElementById('companyName') as HTMLInputElement).focus();
+      return;
+    }
+
+    if (companyName.length > 200) {
+      showStatus('Company name must be under 200 characters.', true);
+      return;
+    }
+
+    if (sourceUrl && !/^https?:\/\/.+/.test(sourceUrl)) {
+      showStatus('Source URL must start with http:// or https://.', true);
+      (document.getElementById('sourceUrl') as HTMLInputElement).focus();
       return;
     }
 
