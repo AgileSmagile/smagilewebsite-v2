@@ -1,5 +1,7 @@
 ---
 import PublicLayout from '../layouts/PublicLayout.astro';
+
+export const prerender = false;
 ---
 
 <PublicLayout
@@ -13,35 +15,190 @@ import PublicLayout from '../layouts/PublicLayout.astro';
       we would love to hear from you.
     </p>
 
-    <div class="mt-10 p-8 bg-secondary-50 dark:bg-grey-800 rounded-xl border border-secondary-200 dark:border-grey-700">
-      <h2 class="text-xl font-semibold text-grey-900 dark:text-white">Book a free consultation call</h2>
-      <p class="mt-2 text-grey-700 dark:text-warm-200">
-        A no-obligation conversation to understand your challenges and discuss how smagile can help.
-      </p>
-      <div class="mt-6">
-        <a
-          href="mailto:hello@smagile.co"
-          class="inline-block px-6 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors"
-        >
-          Email us
-        </a>
+    <!-- Contact form -->
+    <form id="contact-form" class="mt-10 space-y-6" novalidate>
+      <!-- Honeypot (hidden from real users) -->
+      <div class="hidden" aria-hidden="true">
+        <label for="website">Website</label>
+        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
       </div>
+
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label for="name" class="block text-sm font-medium text-grey-700 dark:text-warm-200 mb-1">
+            Name <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            required
+            maxlength="100"
+            placeholder="Your name"
+            class="w-full px-4 py-2.5 bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-700 rounded-lg text-grey-900 dark:text-white text-sm placeholder-grey-400 dark:placeholder-grey-500 focus:outline-none focus:border-primary dark:focus:border-secondary focus:ring-1 focus:ring-primary dark:focus:ring-secondary transition-colors"
+          />
+          <p class="mt-1 text-xs text-red-500 hidden" data-error="name"></p>
+        </div>
+        <div>
+          <label for="email" class="block text-sm font-medium text-grey-700 dark:text-warm-200 mb-1">
+            Email <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            maxlength="254"
+            placeholder="you@example.com"
+            class="w-full px-4 py-2.5 bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-700 rounded-lg text-grey-900 dark:text-white text-sm placeholder-grey-400 dark:placeholder-grey-500 focus:outline-none focus:border-primary dark:focus:border-secondary focus:ring-1 focus:ring-primary dark:focus:ring-secondary transition-colors"
+          />
+          <p class="mt-1 text-xs text-red-500 hidden" data-error="email"></p>
+        </div>
+      </div>
+
+      <div>
+        <label for="subject" class="block text-sm font-medium text-grey-700 dark:text-warm-200 mb-1">
+          Subject
+        </label>
+        <select
+          id="subject"
+          name="subject"
+          class="w-full px-4 py-2.5 bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-700 rounded-lg text-grey-900 dark:text-white text-sm focus:outline-none focus:border-primary dark:focus:border-secondary focus:ring-1 focus:ring-primary dark:focus:ring-secondary transition-colors"
+        >
+          <option value="">General enquiry</option>
+          <option value="Consultation">Book a free consultation</option>
+          <option value="Retrospective Facilitation">Retrospective facilitation</option>
+          <option value="Training">Training enquiry</option>
+          <option value="Partnership">Partnership opportunity</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="message" class="block text-sm font-medium text-grey-700 dark:text-warm-200 mb-1">
+          Message <span class="text-red-500">*</span>
+        </label>
+        <textarea
+          id="message"
+          name="message"
+          required
+          rows="5"
+          maxlength="5000"
+          placeholder="Tell us about your challenge or question..."
+          class="w-full px-4 py-2.5 bg-white dark:bg-grey-800 border border-secondary-200 dark:border-grey-700 rounded-lg text-grey-900 dark:text-white text-sm placeholder-grey-400 dark:placeholder-grey-500 focus:outline-none focus:border-primary dark:focus:border-secondary focus:ring-1 focus:ring-primary dark:focus:ring-secondary transition-colors resize-y"
+        ></textarea>
+        <p class="mt-1 text-xs text-red-500 hidden" data-error="message"></p>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <button
+          type="submit"
+          id="submit-btn"
+          class="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors"
+        >
+          Send message
+        </button>
+        <span id="form-status" class="text-sm hidden"></span>
+      </div>
+    </form>
+
+    <!-- Success state (hidden by default) -->
+    <div id="form-success" class="hidden mt-10 p-8 bg-secondary-50 dark:bg-grey-800 rounded-xl border border-secondary-200 dark:border-grey-700 text-center">
+      <svg class="w-12 h-12 mx-auto text-primary dark:text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h2 class="mt-4 text-xl font-semibold text-grey-900 dark:text-white">Message sent</h2>
+      <p class="mt-2 text-grey-700 dark:text-warm-200">
+        Thank you for getting in touch. We will get back to you within two working days.
+      </p>
     </div>
 
-    <div class="mt-10 p-8 bg-secondary-50 dark:bg-grey-800 rounded-xl border border-secondary-200 dark:border-grey-700">
-      <h2 class="text-xl font-semibold text-grey-900 dark:text-white">Remote retrospective facilitation</h2>
-      <p class="mt-2 text-grey-700 dark:text-warm-200">
-        Need an independent facilitator for your team's retrospective? We run remote sessions
-        that create space for honest, productive reflection.
+    <!-- Alternative: direct email -->
+    <div class="mt-12 pt-8 border-t border-secondary-200 dark:border-grey-700">
+      <p class="text-sm text-grey-600 dark:text-warm-300">
+        Prefer email? Reach us directly at
+        <a href="mailto:hello@smagile.co" class="text-primary dark:text-secondary hover:underline">hello@smagile.co</a>
       </p>
-      <div class="mt-6">
-        <a
-          href="mailto:hello@smagile.co?subject=Retrospective%20Facilitation"
-          class="inline-block px-6 py-3 border-2 border-primary text-primary dark:border-secondary dark:text-secondary hover:bg-primary hover:text-white dark:hover:bg-secondary dark:hover:text-grey-900 font-medium rounded-lg transition-colors"
-        >
-          Enquire about facilitation
-        </a>
-      </div>
     </div>
   </section>
 </PublicLayout>
+
+<script>
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const statusEl = document.getElementById('form-status') as HTMLSpanElement;
+  const successEl = document.getElementById('form-success') as HTMLDivElement;
+
+  function showError(field: string, message: string) {
+    const el = document.querySelector(`[data-error="${field}"]`) as HTMLParagraphElement;
+    if (el) {
+      el.textContent = message;
+      el.classList.remove('hidden');
+    }
+    const input = document.getElementById(field) as HTMLElement;
+    input?.classList.add('border-red-400', 'dark:border-red-400');
+  }
+
+  function clearErrors() {
+    document.querySelectorAll('[data-error]').forEach((el) => el.classList.add('hidden'));
+    form.querySelectorAll('input, textarea').forEach((el) => {
+      el.classList.remove('border-red-400', 'dark:border-red-400');
+    });
+    statusEl.classList.add('hidden');
+  }
+
+  function validate(): boolean {
+    clearErrors();
+    let valid = true;
+
+    const name = (document.getElementById('name') as HTMLInputElement).value.trim();
+    const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+    const message = (document.getElementById('message') as HTMLTextAreaElement).value.trim();
+
+    if (!name) { showError('name', 'Name is required'); valid = false; }
+    if (!email) {
+      showError('email', 'Email is required'); valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('email', 'Please enter a valid email address'); valid = false;
+    }
+    if (!message) { showError('message', 'Message is required'); valid = false; }
+
+    return valid;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+
+    const payload = {
+      name: (document.getElementById('name') as HTMLInputElement).value.trim(),
+      email: (document.getElementById('email') as HTMLInputElement).value.trim(),
+      subject: (document.getElementById('subject') as HTMLSelectElement).value,
+      message: (document.getElementById('message') as HTMLTextAreaElement).value.trim(),
+      website: (document.getElementById('website') as HTMLInputElement).value,
+    };
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Something went wrong' }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      form.classList.add('hidden');
+      successEl.classList.remove('hidden');
+    } catch (err) {
+      statusEl.textContent = err instanceof Error ? err.message : 'Network error. Please try again.';
+      statusEl.className = 'text-sm text-red-500';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send message';
+    }
+  });
+</script>

@@ -6,8 +6,14 @@ import EmptyState from '../../../components/admin/EmptyState.astro';
 import { getOutreachOpportunities, getOutreachSummary } from '../../../lib/admin/outreach';
 import { formatRate, formatDateWithYear } from '../../../lib/admin/format';
 import { buildFilterUrl } from '../../../lib/admin/filter-url';
+import { getSupabaseAdmin } from '../../../lib/admin/supabase';
 
 export const prerender = false;
+
+const pageErrors: string[] = [];
+if (!getSupabaseAdmin()) {
+  pageErrors.push('Supabase is not configured. Outreach data is unavailable.');
+}
 
 const statusFilter = Astro.url.searchParams.get('status') || 'all';
 const triggerFilter = Astro.url.searchParams.get('trigger') || 'all';
@@ -59,7 +65,7 @@ const triggerOptions = [
 ];
 ---
 
-<AdminLayout title="Outreach Opportunities">
+<AdminLayout title="Outreach Opportunities" errors={pageErrors}>
   <Breadcrumb segments={[
     { label: 'Dashboard', href: '/admin/' },
     { label: 'Leads', href: '/admin/leads/' },
@@ -225,18 +231,12 @@ const triggerOptions = [
                 >
                   Skip
                 </button>
-                <span class="group relative">
-                  <button
-                    disabled
-                    class="px-3 py-1.5 text-xs font-medium text-grey-600 bg-grey-700/50 rounded-lg border border-grey-700 cursor-not-allowed"
-                  >
-                    Send
-                  </button>
-                  <span class="pointer-events-none absolute z-10 bottom-full mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-grey-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                    Phase 2
-                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-grey-900"></span>
-                  </span>
-                </span>
+                <button
+                  data-copy-body={opp.suggested_body}
+                  class="copy-body-btn px-3 py-1.5 text-xs font-medium text-warm-300 bg-grey-700 rounded-lg border border-grey-600 hover:bg-grey-600 hover:text-white transition-colors"
+                >
+                  Copy draft
+                </button>
               </>
             )}
             {opp.job_url && (
@@ -256,11 +256,41 @@ const triggerOptions = [
   )}
 
   <p class="text-xs text-grey-500 text-center mt-6">
-    Outreach signals detected from job opportunity data. Phase 2 will add direct sending.
+    Outreach signals detected from job opportunity data. Use "Copy draft" to grab the message, then send manually via email or LinkedIn.
   </p>
 </AdminLayout>
 
 <script>
+  // Copy draft body to clipboard
+  document.querySelectorAll<HTMLButtonElement>('.copy-body-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.copyBody;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('text-secondary');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('text-secondary');
+        }, 1500);
+      } catch {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy draft'; }, 1500);
+      }
+    });
+  });
+
   document.querySelectorAll<HTMLButtonElement>('.outreach-action-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const outreachId = btn.dataset.outreachId;
@@ -302,7 +332,7 @@ const triggerOptions = [
         console.error('Outreach status update failed:', err);
         btn.disabled = false;
         btn.textContent = 'Skip';
-        alert(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        window.adminNotify?.(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
       }
     });
   });

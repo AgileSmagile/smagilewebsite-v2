@@ -1,13 +1,16 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import AdminSidebar from '../components/admin/AdminSidebar.astro';
+import AdminNotifications from '../components/admin/AdminNotifications.astro';
 import '../styles/global.css';
 
 interface Props {
   title: string;
+  errors?: string[];
+  warnings?: string[];
 }
 
-const { title } = Astro.props;
+const { title, errors = [], warnings = [] } = Astro.props;
 const currentPath = Astro.url.pathname;
 const userEmail = Astro.request.headers.get('Cf-Access-Authenticated-User-Email');
 ---
@@ -38,6 +41,7 @@ const userEmail = Astro.request.headers.get('Cf-Access-Authenticated-User-Email'
     <main class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
       <slot />
     </main>
+    <AdminNotifications errors={errors} warnings={warnings} />
   </div>
 
   <footer class="border-t border-grey-800 py-3 px-4">

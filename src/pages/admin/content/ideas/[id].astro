@@ -175,12 +175,22 @@ const statusOptions = [
       }
 
       const payload = {
-        raw_input: document.getElementById('raw_input')?.value,
+        raw_input: document.getElementById('raw_input')?.value?.trim(),
         category: document.getElementById('category')?.value,
         status: document.getElementById('status')?.value,
-        title: document.getElementById('title')?.value || null,
+        title: document.getElementById('title')?.value?.trim() || null,
         content: document.getElementById('content')?.value || null,
       };
+
+      if (!payload.raw_input) {
+        showStatus('Original idea text is required.', true);
+        document.getElementById('raw_input')?.focus();
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save changes';
+        }
+        return;
+      }
 
       try {
         const res = await fetch(`/admin/api/content-ideas/${ideaId}`, {

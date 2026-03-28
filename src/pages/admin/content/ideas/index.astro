@@ -212,7 +212,16 @@ function timeAgo(dateStr: string): string {
       const rawInput = (document.getElementById('raw_input') as HTMLTextAreaElement)?.value?.trim();
       const category = (form.querySelector('input[name="category"]:checked') as HTMLInputElement)?.value;
 
-      if (!rawInput) return;
+      if (!rawInput) {
+        showCaptureStatus('Please enter an idea before capturing.', true);
+        (document.getElementById('raw_input') as HTMLTextAreaElement).focus();
+        return;
+      }
+
+      if (rawInput.length > 5000) {
+        showCaptureStatus('Idea text must be under 5,000 characters.', true);
+        return;
+      }
 
       if (captureBtn) {
         (captureBtn as HTMLButtonElement).disabled = true;
@@ -278,7 +287,7 @@ function timeAgo(dateStr: string): string {
         console.error('Delete failed:', err);
         btn.disabled = false;
         btn.textContent = 'Delete';
-        alert(`Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        window.adminNotify?.(`Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
       }
     });
   });
