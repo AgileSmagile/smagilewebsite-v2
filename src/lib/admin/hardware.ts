@@ -92,7 +92,7 @@ export async function getWebserverHealth(): Promise<PiHealth> {
     const hostname = safeExec('hostname') || 'webserver';
 
     const services: Record<string, string> = {};
-    for (const svc of ['cloudflared', 'node', 'ssh', 'fail2ban']) {
+    for (const svc of ['cloudflared', 'nginx', 'smagile-web', 'ssh']) {
       services[svc] = safeExec(`systemctl is-active ${svc} 2>/dev/null`) || 'unknown';
     }
 
