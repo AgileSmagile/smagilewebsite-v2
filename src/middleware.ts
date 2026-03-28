@@ -74,7 +74,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const referer = context.request.headers.get('referer');
       const host = context.request.headers.get('host');
 
-      // Determine the source hostname from Origin or Referer
+      // Determine the source hostname from Origin or Referer.
+      // When neither header is present, allow the request: browsers always
+      // attach Origin on cross-origin requests, so its absence means
+      // same-origin. Cloudflare Access already authenticates all /admin/*
+      // requests, so this CSRF check is defence-in-depth only.
       const sourceHeader = origin || referer;
       if (sourceHeader && host) {
         const sourceHost = new URL(sourceHeader).hostname;
@@ -82,9 +86,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
         if (sourceHost !== requestHost) {
           return new Response('Invalid origin', { status: 403 });
         }
-      } else if (!sourceHeader) {
-        // Neither Origin nor Referer present; reject the request
-        return new Response('Missing origin', { status: 403 });
       }
     }
   }
